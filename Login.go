@@ -27,7 +27,7 @@ func Login(c *gin.Context) {
 	defer db.Close()
 	StartTime := time.Now()
 	StartTimeStr := StartTime.String()
-	Page := "LOGIN"
+	PageGo := "LOGIN"
 	ParamKey := ""
 
 	var (
@@ -83,7 +83,7 @@ func Login(c *gin.Context) {
 	if string(bodyString) == "" {
 		errorMessage := "Error, Body is empty"
 		returnDataJsonlogin(reqBody.Username, ParamKey, "1", errorMessage, logData, c)
-		helper.SendLogError(reqBody.Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+		helper.SendLogError(reqBody.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
 
@@ -91,7 +91,7 @@ func Login(c *gin.Context) {
 	if !IsJson {
 		errorMessage := "Error, Body - invalid json data"
 		returnDataJsonlogin(reqBody.Username, ParamKey, "1", errorMessage, logData, c)
-		helper.SendLogError(reqBody.Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+		helper.SendLogError(reqBody.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
 	// ------ end of body json validation ------
@@ -101,7 +101,7 @@ func Login(c *gin.Context) {
 		if err := c.ShouldBindJSON(&reqBody); err != nil {
 			errorMessage := "Error, Bind Json Data"
 			returnDataJsonlogin(reqBody.Username, ParamKey, "1", errorMessage, logData, c)
-			helper.SendLogError(reqBody.Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+			helper.SendLogError(reqBody.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
 			Username := reqBody.Username
@@ -119,7 +119,7 @@ func Login(c *gin.Context) {
 
 			if errorMessage != "" {
 				returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-				helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
 			// ------ end of Param Validation ------
@@ -133,26 +133,26 @@ func Login(c *gin.Context) {
 			if err := db.QueryRow(query).Scan(&CountLogin, &PasswordDB, &StatusAdmin, &Role, &CountBlock); err != nil {
 				errorMessage := "Error query, " + err.Error()
 				returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-				helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
 
 			if (CountLogin == 0) {
 				errorMessage := "Akun Anda tidak terdaftar"
 				returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-				helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			} else {
 				if CountBlock >= 3 {
 					errorMessage := "Akun Anda terblokir, harap hubungi Admin SIAM"
 					returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-					helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				} else {
 					if StatusAdmin == 0 {
 						errorMessage := "Akun Anda sudah tidak aktif"
 						returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-						helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					} else {
 						if Password != PasswordDB {
@@ -163,13 +163,13 @@ func Login(c *gin.Context) {
 								ParamKey = ""
 								errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 								returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-								helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+								helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 								return
 							}
 
 							errorMessage := "Password Anda tidak sesuai"
 							returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
-							helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+							helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 							return
 						} else {
 							ParamKey = helper.Token()
@@ -179,7 +179,7 @@ func Login(c *gin.Context) {
 							if err != nil {
 								ParamKey = ""
 								errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-								helper.SendLogError(Username, Page, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+								helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 								returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
 								return
 							}
@@ -197,7 +197,7 @@ func Login(c *gin.Context) {
 							}
 	
 							Log := "Login Pukul " + Hour + ":" + Minute + " " + State
-							helper.LogActivity(Username, Page, IP, bodyString, Method, Log, "Sukses", Role, c)
+							helper.LogActivity(Username, PageGo, IP, bodyString, Method, Log, "Sukses", Role, c)
 							returnDataJsonlogin(Username, ParamKey, "0", errorMessage, logData, c)
 							return
 						}

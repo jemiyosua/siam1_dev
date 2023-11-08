@@ -14,6 +14,7 @@ func main() {
 	apiVersion := "/api/v1/"
 
 	router.POST(apiVersion+"Login", Login)
+	router.POST(apiVersion+"Siswa", Siswa)
 
 	PORT := os.Getenv("PORT")
 
