@@ -19,30 +19,30 @@ import (
 )
 
 type JSiswaRequest struct {
-	Username string
-	ParamKey string
-	Method string
-	NISN string
-	Nama string
+	Username     string
+	ParamKey     string
+	Method       string
+	NISN         string
+	Nama         string
 	JenisKelamin string
-	NomorHP string
-	Kelas string
-	Status string
-	Page int
-	RowPage int
-	OrderBy string
-	Order string
+	NomorHP      string
+	Kelas        string
+	Status       string
+	Page         int
+	RowPage      int
+	OrderBy      string
+	Order        string
 }
 
 type JSiswaResponse struct {
-	NISN string
-	Nama string
+	NISN         string
+	Nama         string
 	JenisKelamin string
 	TanggalLahir string
-	Alamat string
-	NomorHP string
-	Kelas string
-	Status string
+	Alamat       string
+	NomorHP      string
+	Kelas        string
+	Status       string
 	TanggalInput string
 }
 
@@ -54,10 +54,10 @@ func Siswa(c *gin.Context) {
 	PageGo := "SISWA"
 
 	var (
-		bodyBytes   []byte
-		XRealIp string
-		IP      string
-		LogFile string
+		bodyBytes    []byte
+		XRealIp      string
+		IP           string
+		LogFile      string
 		totalPage    float64
 		totalRecords float64
 	)
@@ -200,7 +200,7 @@ func Siswa(c *gin.Context) {
 				// ---------- end of query where ----------
 
 				queryOrder := ""
-				
+
 				if OrderBy == "" {
 					queryOrder = " ORDER BY " + OrderBy + " " + Order
 				}
@@ -271,13 +271,13 @@ func returnDataJsonSiswa(jSiswaResponse []JSiswaResponse, TotalPage float64, Err
 	} else {
 		currentTime := time.Now()
 		currentTime1 := currentTime.Format("01/02/2006 15:04:05")
-		
+
 		c.PureJSON(http.StatusOK, gin.H{
-			"ErrCode":      ErrorCode,
-			"ErrMessage":   ErrorMessage,
-			"DateTime": currentTime1,
-			"Result": jSiswaResponse,
-			"TotalPage": TotalPage,
+			"ErrCode":    ErrorCode,
+			"ErrMessage": ErrorMessage,
+			"DateTime":   currentTime1,
+			"Result":     jSiswaResponse,
+			"TotalPage":  TotalPage,
 		})
 	}
 
