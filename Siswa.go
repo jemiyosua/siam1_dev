@@ -25,6 +25,8 @@ type JSiswaRequest struct {
 	NISN         string
 	Nama         string
 	JenisKelamin string
+	TanggalLahir string
+	Alamat       string
 	NomorHP      string
 	Kelas        string
 	Status       string
@@ -52,6 +54,7 @@ func Siswa(c *gin.Context) {
 	StartTime := time.Now()
 	StartTimeStr := StartTime.String()
 	PageGo := "SISWA"
+	PageMenu := "Siswa"
 
 	var (
 		bodyBytes    []byte
@@ -139,9 +142,16 @@ func Siswa(c *gin.Context) {
 			ParamKeySession := jSiswaRequest.ParamKey
 			Username := jSiswaRequest.Username
 			Method := jSiswaRequest.Method
+
+			NISN := jSiswaRequest.NISN
 			Nama := jSiswaRequest.Nama
 			JenisKelamin := jSiswaRequest.JenisKelamin
+			TanggalLahir := jSiswaRequest.TanggalLahir
+			Alamat := jSiswaRequest.Alamat
+			NomorHP := jSiswaRequest.NomorHP
+			Kelas := jSiswaRequest.Kelas
 			Status := jSiswaRequest.Status
+
 			Page = jSiswaRequest.Page
 			RowPage = jSiswaRequest.RowPage
 			Order := jSiswaRequest.Order
@@ -153,14 +163,162 @@ func Siswa(c *gin.Context) {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
 				returnDataJsonSiswa(jSiswaResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
-				helper.SendLogError(jSiswaRequest.Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
 				return
 			}
 			// ------ end of check session paramkey ------
 
+			// ---------- start cek akses role ----------
+			ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, Role := helper.GetRole(Username, c)
+			if ErrorCodeGetRole != "" {
+				returnDataJsonSiswa(jSiswaResponses, totalPage, ErrorCodeGetRole, ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, logData, c)
+				helper.SendLogError(Username, PageGo, ErrorMessageGetRole, "", "", ErrorCodeGetRole, AllHeader, Method, Path, IP, c)
+				return
+			}
+
+			ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess := helper.CheckMenuAccess(Role, PageMenu, c)
+			if ErrorCodeAccess != "" {
+				returnDataJsonSiswa(jSiswaResponses, totalPage, ErrorCodeAccess, ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess, logData, c)
+				helper.SendLogError(Username, PageGo, ErrorMessageAccess, "", "", ErrorCodeAccess, AllHeader, Method, Path, IP, c)
+				return
+			}
+			// ---------- end of cek akses role ----------
+
 			if Method == "INSERT" {
 
+				ErrorMessage := ""
+				if Nama == "" {
+					ErrorMessage = "Nama tidak boleh kosong"
+				} else if JenisKelamin == "" {
+					ErrorMessage = "JenisKelamin tidak boleh kosong"
+				} else if TanggalLahir == "" {
+					ErrorMessage = "TanggalLahir tidak boleh kosong"
+				} else if Alamat == "" {
+					ErrorMessage = "Alamat tidak boleh kosong"
+				} else if NomorHP == "" {
+					ErrorMessage = "NomorHP tidak boleh kosong"
+				} else if Kelas == "" {
+					ErrorMessage = "Kelas tidak boleh kosong"
+				}
+
+				if ErrorMessage != "" {
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					helper.SendLogError(Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				currentTime := time.Now()
+				currentTime1 := currentTime.Format("01/02/2006 15:04:05")
+
+				TimeSplit := strings.Split(currentTime1, " ")
+				TimeSplit1 := TimeSplit[0]
+				TimeSplit2 := TimeSplit[1]
+				TimeSplit1Replace := strings.Replace(TimeSplit1, "/", "", -1)
+				TimeSplit2Replace := strings.Replace(TimeSplit2, ":", "", -1)
+				CreateNISN := TimeSplit1Replace + TimeSplit2Replace
+
+				query := fmt.Sprintf("INSERT INTO siam_siswa (nisn, nama_siswa, jenis_kelamin, tanggal_lahir, alamat, nomor_hp, kelas, status_siswa, tgl_input) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', NOW())", CreateNISN, Nama, JenisKelamin, TanggalLahir, Alamat, NomorHP, Kelas, Status)
+				_, err1 := db.Exec(query)
+				if err1 != nil {
+					errorMessageReturn := "Gagal INSERT ke tabel siam_siswa"
+					errorMessage := fmt.Sprintf("Error running %q: %+v", query, err1)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessageReturn, logData, c)
+					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				Log := "Berhasil insert data siswa"
+				helper.LogActivity(Username, PageGo, IP, bodyString, Method, Log, "Sukses", Role, c)
+
+				c.JSON(http.StatusOK, gin.H{
+					"ErrorCode":    "0",
+					"ErrorMessage": "",
+					"DateTime":     currentTime1,
+					"Method":       Method,
+					"UserName":     Username,
+					"Result":       "ok",
+				})
+				return
+
 			} else if Method == "UPDATE" {
+
+				ErrorMessage := ""
+				queryUpdate := ""
+				if NISN == "" {
+					ErrorMessage = "NISN tidak boleh kosong"
+				}
+
+				if ErrorMessage != "" {
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				CntNISN := 0
+				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_siswa WHERE nisn = '%s'", NISN)
+				if err := db.QueryRow(query).Scan(&CntNISN); err != nil {
+					errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				if CntNISN == 0 {
+					ErrorMessage := "NISN tidak ditemukan"
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				if Nama != "" {
+					queryUpdate += fmt.Sprintf(" , nama_siswa = '%s' ", Nama)
+				}
+
+				if JenisKelamin != "" {
+					queryUpdate += fmt.Sprintf(" , jenis_kelamin = '%s' ", JenisKelamin)
+				}
+
+				if TanggalLahir != "" {
+					queryUpdate += fmt.Sprintf(" , tanggal_lahir = '%s' ", TanggalLahir)
+				}
+
+				if Alamat != "" {
+					queryUpdate += fmt.Sprintf(" , alamat = '%s' ", Alamat)
+				}
+
+				if NomorHP != "" {
+					queryUpdate += fmt.Sprintf(" , nomor_hp = '%s' ", NomorHP)
+				}
+
+				if Kelas != "" {
+					queryUpdate += fmt.Sprintf(" , kelas = '%s' ", Kelas)
+				}
+
+				query1 := fmt.Sprintf("UPDATE siam_siswa SET tgl_input = NOW() %s WHERE nisn = '%s'", queryUpdate, NISN)
+				_, err1 := db.Exec(query1)
+				if err1 != nil {
+					errorMessageReturn := "Gagal UPDATE ke tabel siam_siswa"
+					errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err1)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessageReturn, logData, c)
+					helper.SendLogError(jSiswaRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				currentTime := time.Now()
+				currentTime1 := currentTime.Format("01/02/2006 15:04:05")
+
+				Log := "Berhasil update data siswa"
+				helper.LogActivity(Username, PageGo, IP, bodyString, Method, Log, "Sukses", Role, c)
+
+				c.JSON(http.StatusOK, gin.H{
+					"ErrorCode":    "0",
+					"ErrorMessage": "",
+					"DateTime":     currentTime1,
+					"Method":       Method,
+					"UserName":     Username,
+					"Result":       "ok",
+				})
+				return
 
 			} else if Method == "DELETE" {
 
@@ -273,8 +431,8 @@ func returnDataJsonSiswa(jSiswaResponse []JSiswaResponse, TotalPage float64, Err
 		currentTime1 := currentTime.Format("01/02/2006 15:04:05")
 
 		c.PureJSON(http.StatusOK, gin.H{
-			"ErrCode":    ErrorCode,
-			"ErrMessage": ErrorMessage,
+			"ErrCode":    ErrorCodeReturn,
+			"ErrMessage": ErrorMessageReturn,
 			"DateTime":   currentTime1,
 			"Result":     jSiswaResponse,
 			"TotalPage":  TotalPage,
