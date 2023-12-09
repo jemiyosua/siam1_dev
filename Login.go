@@ -31,10 +31,10 @@ func Login(c *gin.Context) {
 	ParamKey := ""
 
 	var (
-		bodyBytes   []byte
-		XRealIp string
-		IP      string
-		LogFile string
+		bodyBytes []byte
+		XRealIp   string
+		IP        string
+		LogFile   string
 	)
 
 	reqBody := JLoginRequest{}
@@ -137,7 +137,7 @@ func Login(c *gin.Context) {
 				return
 			}
 
-			if (CountLogin == 0) {
+			if CountLogin == 0 {
 				errorMessage := "Akun Anda tidak terdaftar"
 				returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
 				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
@@ -156,7 +156,7 @@ func Login(c *gin.Context) {
 						return
 					} else {
 						if Password != PasswordDB {
-							CountBlock+=1
+							CountBlock += 1
 							query := fmt.Sprintf("UPDATE siam_login SET count_block = '%d'", CountBlock)
 							_, err := db.Exec(query)
 							if err != nil {
@@ -173,7 +173,7 @@ func Login(c *gin.Context) {
 							return
 						} else {
 							ParamKey = helper.Token()
-	
+
 							query := fmt.Sprintf("INSERT INTO siam_login_session (username,paramKey, tgl_input) values ('%s','%s', ADDTIME(NOW(), '0:20:0'))", Username, ParamKey)
 							_, err := db.Exec(query)
 							if err != nil {
@@ -183,7 +183,7 @@ func Login(c *gin.Context) {
 								returnDataJsonlogin(Username, ParamKey, "1", errorMessage, logData, c)
 								return
 							}
-	
+
 							currentTime := time.Now()
 							TimeNow := currentTime.Format("15:04:05")
 							TimeNowSplit := strings.Split(TimeNow, ":")
@@ -195,7 +195,7 @@ func Login(c *gin.Context) {
 							} else {
 								State = "PM"
 							}
-	
+
 							Log := "Login Pukul " + Hour + ":" + Minute + " " + State
 							helper.LogActivity(Username, PageGo, IP, bodyString, Method, Log, "Sukses", Role, c)
 							returnDataJsonlogin(Username, ParamKey, "0", errorMessage, logData, c)
@@ -204,7 +204,6 @@ func Login(c *gin.Context) {
 					}
 				}
 			}
-
 
 		}
 	}
@@ -220,12 +219,12 @@ func returnDataJsonlogin(UserName string, ParamKey string, ErrorCode string, Err
 	} else {
 		currentTime := time.Now()
 		currentTime1 := currentTime.Format("01/02/2006 15:04:05")
-		
+
 		c.PureJSON(http.StatusOK, gin.H{
-			"ErrCode":      ErrorCode,
-			"ErrMessage":   ErrorMessage,
-			"DateTime": currentTime1,
-			"UseraName":   UserName,
+			"ErrCode":    ErrorCode,
+			"ErrMessage": ErrorMessage,
+			"DateTime":   currentTime1,
+			"UserName":   UserName,
 			"ParamKey":   ParamKey,
 		})
 	}
