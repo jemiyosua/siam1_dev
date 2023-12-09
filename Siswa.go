@@ -90,7 +90,6 @@ func Siswa(c *gin.Context) {
 	DateNow := StartTime.Format("2006-01-02")
 	LogFILE := LogFile + "Login_" + DateNow + ".log"
 	file, err := os.OpenFile(LogFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	fmt.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -245,11 +244,11 @@ func Siswa(c *gin.Context) {
 				ErrorMessage := ""
 				queryUpdate := ""
 				if NISN == "" {
-					ErrorMessage = "NISN tidak boleh kosong"
+					ErrorMessage = "NISN cannot null"
 				}
 
 				if ErrorMessage != "" {
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "3", "3", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -265,6 +264,22 @@ func Siswa(c *gin.Context) {
 
 				if CntNISN == 0 {
 					ErrorMessage := "NISN tidak ditemukan"
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				CntNama := 0
+				query2 := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_siswa WHERE nama_siswa = '%s'", Nama)
+				if err := db.QueryRow(query2).Scan(&CntNama); err != nil {
+					errorMessage := fmt.Sprintf("Error running %q: %+v", query2, err)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				if CntNama > 0 {
+					ErrorMessage := fmt.Sprintf("%s already exist", Nama)
 					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
