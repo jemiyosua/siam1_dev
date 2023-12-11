@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"siam/helper"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 type JKelasRequest struct {
 	IdKelas     int
 	NamaKelas   string
-	StatusKelas int
+	StatusKelas string
 	Username    string
 	ParamKey    string
 	Method      string
@@ -78,7 +79,6 @@ func Kelas(c *gin.Context) {
 	DateNow := StartTime.Format("2006-01-02")
 	LogFILE := LogFile + "Kelas_" + DateNow + ".log"
 	file, err := os.OpenFile(LogFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	fmt.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func Kelas(c *gin.Context) {
 						}
 					}
 
-					query = fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s','%d')", NamaKelas, StatusKelas)
+					query = fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s',1)", NamaKelas)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
@@ -181,7 +181,7 @@ func Kelas(c *gin.Context) {
 					jKelasResponse.TanggalInput = StartTimeStr
 
 					errorMessage := "Sukses tambah kelas baru!"
-					returnSuccess(c, jKelasResponse, errorMessage, 0, "0")
+					returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
 
 				}
 
@@ -191,16 +191,23 @@ func Kelas(c *gin.Context) {
 					querySet += " nama_kelas = '" + NamaKelas + "'"
 				}
 
-				if StatusKelas == 0 || StatusKelas == 1 {
+				if StatusKelas != "" {
 					if querySet != "" {
 						querySet += " , "
 					}
+					iStatus, err := strconv.Atoi(StatusKelas)
+					if err == nil {
+						querySet += fmt.Sprintf(" status_kelas = %d ", iStatus)
+					} else {
+						errorMessage := "Error convert variable, " + err.Error()
+						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
 
-					querySet += fmt.Sprintf(" status_kelas = %d ", StatusKelas)
 				}
 
 				query1 := fmt.Sprintf(`update siam_kelas set %s where id_kelas = %d ;`, querySet, IdKelas)
-				fmt.Println(query1)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -216,7 +223,7 @@ func Kelas(c *gin.Context) {
 				jKelasResponse.TanggalInput = StartTimeStr
 
 				errorMessage := "Sukses update kelas!"
-				returnSuccess(c, jKelasResponse, errorMessage, 0, "0")
+				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
 
 			} else if Method == "DELETE" {
 				query1 := fmt.Sprintf(`update siam_kelas set status_kelas = 0 where id_kelas = %d ;`, IdKelas)
@@ -230,7 +237,7 @@ func Kelas(c *gin.Context) {
 				}
 
 				errorMessage := "Berhasil hapus data!"
-				returnSuccess(c, jKelasResponse, errorMessage, 0, "0")
+				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
 
 			} else if Method == "SELECT" {
 				PageNow := (Page - 1) * RowPage
@@ -245,12 +252,19 @@ func Kelas(c *gin.Context) {
 					queryWhere += " nama_kelas LIKE '%" + NamaKelas + "%' "
 				}
 
-				if StatusKelas == 0 || StatusKelas == 1 {
+				if StatusKelas != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
-
-					queryWhere += fmt.Sprintf(" status_kelas = %d ", StatusKelas)
+					iStatus, err := strconv.Atoi(StatusKelas)
+					if err == nil {
+						queryWhere += fmt.Sprintf(" status_kelas = %d ", iStatus)
+					} else {
+						errorMessage := "Error convert variable, " + err.Error()
+						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
 				}
 
 				if queryWhere != "" {
@@ -269,7 +283,6 @@ func Kelas(c *gin.Context) {
 				totalPage = math.Ceil(float64(totalRecords) / float64(RowPage))
 
 				query1 := fmt.Sprintf(`SELECT id_kelas, nama_kelas, status_kelas, tgl_input FROM siam_kelas %s LIMIT %d,%d;`, queryWhere, PageNow, RowPage)
-				fmt.Println(query1)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -312,7 +325,7 @@ func Kelas(c *gin.Context) {
 
 }
 
-func returnSuccess(c *gin.Context, jKelasResponse JKelasResponse, Message string, TotalPage float64, ErrorCode string) {
+func returnKelasSuccess(c *gin.Context, jKelasResponse JKelasResponse, Message string, TotalPage float64, ErrorCode string) {
 	currentTime := time.Now()
 	currentTime1 := currentTime.Format("01/02/2006 15:04:05")
 	c.PureJSON(http.StatusOK, gin.H{
