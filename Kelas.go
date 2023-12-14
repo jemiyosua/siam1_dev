@@ -180,8 +180,8 @@ func Kelas(c *gin.Context) {
 					jKelasResponse.StatusKelas = 1
 					jKelasResponse.TanggalInput = StartTimeStr
 
-					errorMessage := "Sukses tambah kelas baru!"
-					returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+					errorMessage := "Sukses insert data!"
+					returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 				}
 
@@ -222,8 +222,9 @@ func Kelas(c *gin.Context) {
 				jKelasResponse.StatusKelas = 1
 				jKelasResponse.TanggalInput = StartTimeStr
 
-				errorMessage := "Sukses update kelas!"
-				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+				jKelasResponses = append(jKelasResponses, jKelasResponse)
+				errorMessage := "Sukses update data!"
+				returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 			} else if Method == "DELETE" {
 				query1 := fmt.Sprintf(`update siam_kelas set status_kelas = 0 where id_kelas = %d ;`, IdKelas)
@@ -237,12 +238,11 @@ func Kelas(c *gin.Context) {
 				}
 
 				errorMessage := "Berhasil hapus data!"
-				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+				returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 			} else if Method == "SELECT" {
 				PageNow := (Page - 1) * RowPage
 
-				// ---------- start query where ----------
 				queryWhere := ""
 				if NamaKelas != "" {
 					if queryWhere != "" {
@@ -323,18 +323,6 @@ func Kelas(c *gin.Context) {
 		}
 	}
 
-}
-
-func returnKelasSuccess(c *gin.Context, jKelasResponse JKelasResponse, Message string, TotalPage float64, ErrorCode string) {
-	currentTime := time.Now()
-	currentTime1 := currentTime.Format("01/02/2006 15:04:05")
-	c.PureJSON(http.StatusOK, gin.H{
-		"ErrCode":   ErrorCode,
-		"Message":   Message,
-		"DateTime":  currentTime1,
-		"Result":    jKelasResponse,
-		"TotalPage": TotalPage,
-	})
 }
 
 func returnDataJsonKelas(jKelasResponse []JKelasResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {

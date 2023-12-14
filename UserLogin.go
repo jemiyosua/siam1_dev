@@ -204,8 +204,10 @@ func UserLogin(c *gin.Context) {
 					jUserLoginResponse.Status = 1
 					jUserLoginResponse.TanggalInput = currentTimeStr
 
-					errorMessage := "Sukses tambah user baru!"
-					returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
+					jUserLoginResponses = append(jUserLoginResponses, jUserLoginResponse)
+
+					errorMessage := "Sukses insert data!"
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 				} else {
 					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
@@ -282,8 +284,10 @@ func UserLogin(c *gin.Context) {
 					)
 				}
 
-				errorMessage := "Sukses update user login!"
-				returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
+				jUserLoginResponses = append(jUserLoginResponses, jUserLoginResponse)
+
+				errorMessage := "Sukses update data!"
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 			} else if Method == "DELETE" {
 
@@ -298,20 +302,19 @@ func UserLogin(c *gin.Context) {
 						return
 					}
 				} else {
-					errorMessage := "Id tidak ditemukan!"
+					errorMessage := "Data tidak ditemukan!"
 					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
-				errorMessage := "Sukses delete user!"
-				returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
+				errorMessage := "Sukses delete data!"
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 			} else if Method == "SELECT" {
 
 				PageNow := (Page - 1) * RowPage
 
-				// ---------- start query where ----------
 				queryWhere := ""
 				if Id > 0 {
 					if queryWhere != "" {
@@ -414,7 +417,8 @@ func UserLogin(c *gin.Context) {
 					}
 				}
 
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", "", "", logData, c)
+				errorMessage := "OK"
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 				return
 
 			} else {
@@ -433,18 +437,6 @@ func encodeText(text string) string {
 	base64String := base64.StdEncoding.EncodeToString([]byte(text))
 	SignatureKey := fmt.Sprintf("%x", md5.Sum([]byte(base64String)))
 	return SignatureKey
-}
-
-func returnSuccessUserLogin(c *gin.Context, jUserLoginResponse JUserLoginResponse, Message string, TotalPage float64, ErrorCode string) {
-	currentTime := time.Now()
-	currentTime1 := currentTime.Format("01/02/2006 15:04:05")
-	c.PureJSON(http.StatusOK, gin.H{
-		"ErrCode":   ErrorCode,
-		"Message":   Message,
-		"DateTime":  currentTime1,
-		"Result":    jUserLoginResponse,
-		"TotalPage": TotalPage,
-	})
 }
 
 func returnDataJsonUserLogin(jUserLoginResponse []JUserLoginResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
