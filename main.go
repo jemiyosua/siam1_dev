@@ -18,6 +18,7 @@ func main() {
 	router.POST(apiVersion+"Guru", Guru)
 	router.POST(apiVersion+"Kelas", Kelas)
 	router.POST(apiVersion+"UserLogin", UserLogin)
+	router.POST(apiVersion+"KelasActive", KelasActive)
 	PORT := os.Getenv("PORT")
 
 	router.Run(":" + PORT)
