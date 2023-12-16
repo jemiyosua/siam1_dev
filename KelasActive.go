@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -174,7 +175,6 @@ func KelasActive(c *gin.Context) {
 					}
 
 					query = fmt.Sprintf("INSERT into siam_kelas_active(id_kelas, nama_kelas, tahun_ajaran, semester, jumlah_siswa)values(%d,'%s','%s',%d,%d)", idKelas, namaKelas, tahunAjaran, semester, jumlahSiswa)
-					fmt.Println(query)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
@@ -210,24 +210,13 @@ func KelasActive(c *gin.Context) {
 					returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
-				} else {
-					var cntKelasActive int
-					query1 := fmt.Sprintf(`select count(1) as cnt from siam_kelas_active where id_kelas_active = %d ;`, idKelasActive)
-					if err := db.QueryRow(query1).Scan(&cntKelasActive); err != nil {
-						errorMessage := "Error query, " + err.Error()
-						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-						return
-					}
+				}
 
-					if cntKelasActive == 0 {
-						errorMessage := "Data tidak ditemukan!"
-						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-						return
-					} else {
-						querySet += fmt.Sprintf(" id_kelas = %d ", idKelasActive)
-					}
+				msgValidate := validateIdKelasAvtive(idKelasActive, db)
+				if msgValidate != "OK" {
+					returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
 				}
 
 				namaKelas := ""
@@ -276,7 +265,6 @@ func KelasActive(c *gin.Context) {
 
 				query1 := fmt.Sprintf(`update siam_kelas_active set %s where id_kelas_active = %d ;`, querySet, idKelasActive)
 				rows, err := db.Query(query1)
-				fmt.Println(rows)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
@@ -314,17 +302,10 @@ func KelasActive(c *gin.Context) {
 			} else if method == "DELETE" {
 				if idKelasActive > 0 {
 
-					var cntKelasActive int
-					query1 := fmt.Sprintf(`select count(1) as cnt from siam_kelas_active where id_kelas_active = %d ;`, idKelasActive)
-					if err := db.QueryRow(query1).Scan(&cntKelasActive); err != nil {
-						errorMessage := "Error query, " + err.Error()
-						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-						return
-					}
+					msgValidate := validateIdKelasAvtive(idKelasActive, db)
 
-					if cntKelasActive > 0 {
-						query1 = fmt.Sprintf(`delete from siam_kelas_active where id_kelas_active = %d ;`, idKelasActive)
+					if msgValidate == "OK" {
+						query1 := fmt.Sprintf(`delete from siam_kelas_active where id_kelas_active = %d ;`, idKelasActive)
 						rows, err := db.Query(query1)
 						defer rows.Close()
 						if err != nil {
@@ -337,9 +318,8 @@ func KelasActive(c *gin.Context) {
 						errorMessage := "Sukses delete data!"
 						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 					} else {
-						errorMessage := "Data tidak ditemukan!"
-						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						returnDataJsonKelasActive(jKelasActiveResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+						helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				} else {
@@ -477,4 +457,22 @@ func returnDataJsonKelasActive(jKelasActiveResponse []JKelasActiveResponse, Tota
 	runtime.GC()
 
 	return
+}
+
+func validateIdKelasAvtive(id int, db *sql.DB) string {
+	msg := "OK"
+
+	var cntKelasActive int
+	query1 := fmt.Sprintf(`select count(1) as cnt from siam_kelas_active where id_kelas_active = %d ;`, id)
+	if err := db.QueryRow(query1).Scan(&cntKelasActive); err != nil {
+		msg = "Error query, " + err.Error()
+	}
+
+	if msg == "OK" {
+		if cntKelasActive == 0 {
+			msg = "Data tidak ditemukan!"
+		}
+	}
+
+	return msg
 }
