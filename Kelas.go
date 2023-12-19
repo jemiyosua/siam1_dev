@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -120,149 +121,176 @@ func Kelas(c *gin.Context) {
 			helper.SendLogError(jKelasRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
-			Page := 0
-			RowPage := 0
+			page := 0
+			rowPage := 0
 
-			UsernameSession := jKelasRequest.Username
-			ParamKeySession := jKelasRequest.ParamKey
-			Username := jKelasRequest.Username
-			Method := jKelasRequest.Method
-			IdKelas := jKelasRequest.IdKelas
-			NamaKelas := jKelasRequest.NamaKelas
-			StatusKelas := jKelasRequest.StatusKelas
-			Page = jKelasRequest.Page
-			RowPage = jKelasRequest.RowPage
+			usernameSession := jKelasRequest.Username
+			paramKeySession := jKelasRequest.ParamKey
+			method := jKelasRequest.Method
+			idKelas := jKelasRequest.IdKelas
+			namaKelas := jKelasRequest.NamaKelas
+			statusKelas := jKelasRequest.StatusKelas
+			page = jKelasRequest.Page
+			rowPage = jKelasRequest.RowPage
 			// Order := jKelasRequest.Order
 			// OrderBy := jKelasRequest.OrderBy
 
 			// ------ start check session paramkey ------
-			checkAccessVal := helper.CheckSession(UsernameSession, ParamKeySession, c)
+			checkAccessVal := helper.CheckSession(usernameSession, paramKeySession, c)
 			if checkAccessVal != "1" {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
 				returnDataJsonKelas(jKelasResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
-				helper.SendLogError(Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(usernameSession, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, method, Path, IP, c)
 				return
 			}
 
-			if Method == "INSERT" {
-				if NamaKelas == "" {
+			if method == "INSERT" {
+				if namaKelas == "" {
 					errorMessage := "Nama Kelas Tidak Boleh Kosong!"
 					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				} else {
 					kelasExists := 0
-					query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_kelas WHERE status_kelas = 1 and nama_kelas = '%s'", NamaKelas)
+					query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_kelas WHERE status_kelas = 1 and nama_kelas = '%s'", namaKelas)
 					if err := db.QueryRow(query).Scan(&kelasExists); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 						return
 					} else {
 						if kelasExists > 0 {
-							errorMessage := "Sudah ada nama kelas yang sama"
+							errorMessage := "Sudah ada nama kelas yang sama!"
 							returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-							helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+							helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 							return
 						}
 					}
 
-					query = fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s',1)", NamaKelas)
+					query = fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s',1)", namaKelas)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 						return
 					}
 
-					jKelasResponse.NamaKelas = NamaKelas
+					jKelasResponse.NamaKelas = namaKelas
 					jKelasResponse.StatusKelas = 1
 					jKelasResponse.TanggalInput = StartTimeStr
 
-					errorMessage := "Sukses tambah kelas baru!"
-					returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+					errorMessage := "Sukses insert data!"
+					returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
 				}
 
-			} else if Method == "UPDATE" {
+			} else if method == "UPDATE" {
 				querySet := ""
-				if NamaKelas != "" {
-					querySet += " nama_kelas = '" + NamaKelas + "'"
+				if namaKelas != "" {
+					querySet += " nama_kelas = '" + namaKelas + "'"
 				}
 
-				if StatusKelas != "" {
+				if idKelas == 0 {
+					errorMessage := "Id kelas tidak boleh kosong!"
+					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					return
+				}
+
+				msgValidate := validateIdKelas(idKelas, db)
+				if msgValidate != "OK" {
+					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
+					return
+				}
+
+				if statusKelas != "" {
 					if querySet != "" {
 						querySet += " , "
 					}
-					iStatus, err := strconv.Atoi(StatusKelas)
+					iStatus, err := strconv.Atoi(statusKelas)
 					if err == nil {
 						querySet += fmt.Sprintf(" status_kelas = %d ", iStatus)
 					} else {
 						errorMessage := "Error convert variable, " + err.Error()
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 						return
 					}
 
 				}
 
-				query1 := fmt.Sprintf(`update siam_kelas set %s where id_kelas = %d ;`, querySet, IdKelas)
+				query1 := fmt.Sprintf(`update siam_kelas set %s where id_kelas = %d ;`, querySet, idKelas)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
 					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				}
 
-				jKelasResponse.IdKelas = IdKelas
-				jKelasResponse.NamaKelas = NamaKelas
+				jKelasResponse.IdKelas = idKelas
+				jKelasResponse.NamaKelas = namaKelas
 				jKelasResponse.StatusKelas = 1
 				jKelasResponse.TanggalInput = StartTimeStr
 
-				errorMessage := "Sukses update kelas!"
-				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+				jKelasResponses = append(jKelasResponses, jKelasResponse)
+				errorMessage := "Sukses update data!"
+				returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
-			} else if Method == "DELETE" {
-				query1 := fmt.Sprintf(`update siam_kelas set status_kelas = 0 where id_kelas = %d ;`, IdKelas)
+			} else if method == "DELETE" {
+				if idKelas == 0 {
+					errorMessage := "Id kelas tidak boleh kosong!"
+					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					return
+				}
+
+				msgValidate := validateIdKelas(idKelas, db)
+				if msgValidate != "OK" {
+					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
+					return
+				}
+
+				query1 := fmt.Sprintf(`update siam_kelas set status_kelas = 0 where id_kelas = %d ;`, idKelas)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
 					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				}
 
 				errorMessage := "Berhasil hapus data!"
-				returnKelasSuccess(c, jKelasResponse, errorMessage, totalPage, "0")
+				returnDataJsonKelas(jKelasResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
 
-			} else if Method == "SELECT" {
-				PageNow := (Page - 1) * RowPage
+			} else if method == "SELECT" {
+				PageNow := (page - 1) * rowPage
 
-				// ---------- start query where ----------
 				queryWhere := ""
-				if NamaKelas != "" {
+				if namaKelas != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += " nama_kelas LIKE '%" + NamaKelas + "%' "
+					queryWhere += " nama_kelas LIKE '%" + namaKelas + "%' "
 				}
 
-				if StatusKelas != "" {
+				if statusKelas != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
-					iStatus, err := strconv.Atoi(StatusKelas)
+					iStatus, err := strconv.Atoi(statusKelas)
 					if err == nil {
 						queryWhere += fmt.Sprintf(" status_kelas = %d ", iStatus)
 					} else {
 						errorMessage := "Error convert variable, " + err.Error()
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 						return
 					}
 				}
@@ -277,18 +305,18 @@ func Kelas(c *gin.Context) {
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
 					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				}
-				totalPage = math.Ceil(float64(totalRecords) / float64(RowPage))
+				totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 
-				query1 := fmt.Sprintf(`SELECT id_kelas, nama_kelas, status_kelas, tgl_input FROM siam_kelas %s LIMIT %d,%d;`, queryWhere, PageNow, RowPage)
+				query1 := fmt.Sprintf(`SELECT id_kelas, nama_kelas, status_kelas, tgl_input FROM siam_kelas %s LIMIT %d,%d;`, queryWhere, PageNow, rowPage)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
 					returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				}
 
@@ -305,7 +333,7 @@ func Kelas(c *gin.Context) {
 					if err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 						return
 					}
 				}
@@ -316,25 +344,13 @@ func Kelas(c *gin.Context) {
 			} else {
 				errorMessage := "Method not found"
 				returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 				return
 			}
 
 		}
 	}
 
-}
-
-func returnKelasSuccess(c *gin.Context, jKelasResponse JKelasResponse, Message string, TotalPage float64, ErrorCode string) {
-	currentTime := time.Now()
-	currentTime1 := currentTime.Format("01/02/2006 15:04:05")
-	c.PureJSON(http.StatusOK, gin.H{
-		"ErrCode":   ErrorCode,
-		"Message":   Message,
-		"DateTime":  currentTime1,
-		"Result":    jKelasResponse,
-		"TotalPage": TotalPage,
-	})
 }
 
 func returnDataJsonKelas(jKelasResponse []JKelasResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
@@ -371,4 +387,22 @@ func returnDataJsonKelas(jKelasResponse []JKelasResponse, TotalPage float64, Err
 	runtime.GC()
 
 	return
+}
+
+func validateIdKelas(id int, db *sql.DB) string {
+	msg := "OK"
+
+	var cntKelas int
+	query1 := fmt.Sprintf(`select count(1) as cnt from siam_kelas where id_kelas = %d ;`, id)
+	if err := db.QueryRow(query1).Scan(&cntKelas); err != nil {
+		msg = "Error query, " + err.Error()
+	}
+
+	if msg == "OK" {
+		if cntKelas == 0 {
+			msg = "Data tidak ditemukan!"
+		}
+	}
+
+	return msg
 }
