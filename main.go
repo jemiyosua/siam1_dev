@@ -1,9 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"os"
 
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	db                                                       *sql.DB
+	connectionString string
 )
 
 func main() {
@@ -11,15 +17,17 @@ func main() {
 	router.Use(CORS())
 	router.ForwardedByClientIP = true
 
+	connectionString = os.Getenv("STRINGCONNECTION1")
+
 	apiVersion := "/api/v1/"
 
 	router.POST(apiVersion+"Login", Login)
 	router.POST(apiVersion+"Siswa", Siswa)
-	router.POST(apiVersion+"Guru", Guru)
-	router.POST(apiVersion+"Kelas", Kelas)
+	router.POST(apiVersion+"Roles", Roles)
+	router.POST(apiVersion+"MenuSidebar", MenuSidebar)
 	router.POST(apiVersion+"UserLogin", UserLogin)
-	router.POST(apiVersion+"KelasActive", KelasActive)
 	router.POST(apiVersion+"ListRole", ListRole)
+
 	PORT := os.Getenv("PORT")
 
 	router.Run(":" + PORT)

@@ -38,7 +38,7 @@ func ListRole(c *gin.Context) {
 	StartTime := time.Now()
 	StartTimeStr := StartTime.String()
 	PageGo := "LISTROLE"
-	PageMenu := "List Role"
+	Role := ""
 
 	var (
 		bodyBytes    []byte
@@ -95,7 +95,7 @@ func ListRole(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage := "Error, Body is empty"
-		returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jListRoleRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -103,7 +103,7 @@ func ListRole(c *gin.Context) {
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage := "Error, Body - invalid json data"
-		returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jListRoleRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -113,7 +113,7 @@ func ListRole(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&jListRoleRequest); err != nil {
 			errorMessage := "Error, Bind Json Data"
-			returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+			returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 			helper.SendLogError(jListRoleRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
@@ -137,7 +137,7 @@ func ListRole(c *gin.Context) {
 			if checkAccessVal != "1" {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
-				returnDataJsonListRole(jListRoleResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
+				returnDataJsonListRole(jListRoleResponses, Role, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
 				helper.SendLogError(Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -146,15 +146,8 @@ func ListRole(c *gin.Context) {
 			// ---------- start cek akses role ----------
 			ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, Role := helper.GetRole(Username, c)
 			if ErrorCodeGetRole != "" {
-				returnDataJsonListRole(jListRoleResponses, totalPage, ErrorCodeGetRole, ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, logData, c)
+				returnDataJsonListRole(jListRoleResponses, Role, totalPage, ErrorCodeGetRole, ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, logData, c)
 				helper.SendLogError(Username, PageGo, ErrorMessageGetRole, "", "", ErrorCodeGetRole, AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess := helper.CheckMenuAccess(Role, PageMenu, c)
-			if ErrorCodeAccess != "" {
-				returnDataJsonListRole(jListRoleResponses, totalPage, ErrorCodeAccess, ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess, logData, c)
-				helper.SendLogError(Username, PageGo, ErrorMessageAccess, "", "", ErrorCodeAccess, AllHeader, Method, Path, IP, c)
 				return
 			}
 			// ---------- end of cek akses role ----------
@@ -187,19 +180,18 @@ func ListRole(c *gin.Context) {
 			query := fmt.Sprintf(`SELECT count(1) as cnt FROM (SELECT nama_role, group_concat(menu separator ', ') AS list_menu FROM siam_role sr LEFT JOIN siam_menu_akses sma ON sr.nama_role = sma.role LEFT JOIN siam_menu sm ON sm.id = sma.id_menu GROUP BY nama_role) tab_List_menu %s`, queryWhere)
 			if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 				errorMessage := "Error query, " + err.Error()
-				returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+				returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
 			totalPage = math.Ceil(float64(totalRecords) / float64(RowPage))
 
 			query1 := fmt.Sprintf(`SELECT nama_role, ifnull(list_menu,'') list_menu FROM (SELECT nama_role, group_concat(menu separator ', ') AS list_menu FROM siam_role sr LEFT JOIN siam_menu_akses sma ON sr.nama_role = sma.role LEFT JOIN siam_menu sm ON sm.id = sma.id_menu GROUP BY nama_role) tab_List_menu %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, RowPage)
-			fmt.Println(query1)
 			rows, err := db.Query(query1)
 			defer rows.Close()
 			if err != nil {
 				errorMessage := "Error query, " + err.Error()
-				returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+				returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -213,19 +205,19 @@ func ListRole(c *gin.Context) {
 
 				if err != nil {
 					errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
-					returnDataJsonListRole(jListRoleResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonListRole(jListRoleResponses, Role, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 			}
 
-			returnDataJsonListRole(jListRoleResponses, totalPage, "0", "0", "", "", logData, c)
+			returnDataJsonListRole(jListRoleResponses, Role, totalPage, "0", "0", "", "", logData, c)
 			return
 		}
 	}
 }
 
-func returnDataJsonListRole(jListRoleResponse []JListRoleResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
+func returnDataJsonListRole(jListRoleResponse []JListRoleResponse, Role string, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
 	if strings.Contains(ErrorMessage, "Error running") {
 		ErrorMessage = "Error Execute data"
 	}
@@ -242,6 +234,7 @@ func returnDataJsonListRole(jListRoleResponse []JListRoleResponse, TotalPage flo
 			"DateTime":   currentTime1,
 			"Result":     jListRoleResponse,
 			"TotalPage":  TotalPage,
+			"Role": Role,
 		})
 	}
 

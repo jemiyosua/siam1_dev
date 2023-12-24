@@ -19,7 +19,7 @@ import (
 )
 
 type JLoginRequest struct {
-	Username string `json:"Username"`
+	Username string
 	Password string
 	Nama     string
 }
@@ -27,7 +27,6 @@ type JLoginRequest struct {
 func Login(c *gin.Context) {
 	db := helper.Connect(c)
 	defer db.Close()
-
 	StartTime := time.Now()
 	StartTimeStr := StartTime.String()
 	PageGo := "LOGIN"
@@ -65,7 +64,6 @@ func Login(c *gin.Context) {
 	DateNow := StartTime.Format("2006-01-02")
 	LogFILE := LogFile + "Login_" + DateNow + ".log"
 	file, err := os.OpenFile(LogFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	fmt.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
