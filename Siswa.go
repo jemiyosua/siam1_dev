@@ -63,6 +63,11 @@ func Siswa(c *gin.Context) {
 		LogFile      string
 		totalPage    float64
 		totalRecords float64
+		ErrorCodeAccess string
+		ErrorMessageAccess string
+		ErrorMessageReturnAccess string
+		Read string
+		Write string
 	)
 
 	jSiswaRequest := JSiswaRequest{}
@@ -111,7 +116,7 @@ func Siswa(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage := "Error, Body is empty"
-		returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jSiswaRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -119,7 +124,7 @@ func Siswa(c *gin.Context) {
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage := "Error, Body - invalid json data"
-		returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jSiswaRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -129,7 +134,7 @@ func Siswa(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&jSiswaRequest); err != nil {
 			errorMessage := "Error, Bind Json Data"
-			returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+			returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 			helper.SendLogError(jSiswaRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
@@ -161,23 +166,23 @@ func Siswa(c *gin.Context) {
 			if checkAccessVal != "1" {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
-				returnDataJsonSiswa(jSiswaResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
+				returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
 				helper.SendLogError(Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
 				return
 			}
 			// ------ end of check session paramkey ------
 
 			// ---------- start cek akses role ----------
-			ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, Role := helper.GetRole(Username, c)
+			ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, Role, RoleId := helper.GetRole(Username, c)
 			if ErrorCodeGetRole != "" {
-				returnDataJsonSiswa(jSiswaResponses, totalPage, ErrorCodeGetRole, ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, logData, c)
+				returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, ErrorCodeGetRole, ErrorCodeGetRole, ErrorMessageGetRole, ErrorMessageReturnGetRole, logData, c)
 				helper.SendLogError(Username, PageGo, ErrorMessageGetRole, "", "", ErrorCodeGetRole, AllHeader, Method, Path, IP, c)
 				return
 			}
 
-			ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess := helper.CheckMenuAccess(Role, PageMenu, c)
+			ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess, Read, Write = helper.CheckMenuAccess(Role, RoleId, PageMenu, c)
 			if ErrorCodeAccess != "" {
-				returnDataJsonSiswa(jSiswaResponses, totalPage, ErrorCodeAccess, ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess, logData, c)
+				returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, ErrorCodeAccess, ErrorCodeAccess, ErrorMessageAccess, ErrorMessageReturnAccess, logData, c)
 				helper.SendLogError(Username, PageGo, ErrorMessageAccess, "", "", ErrorCodeAccess, AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -201,7 +206,7 @@ func Siswa(c *gin.Context) {
 				}
 
 				if ErrorMessage != "" {
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -221,7 +226,7 @@ func Siswa(c *gin.Context) {
 				if err1 != nil {
 					errorMessageReturn := "Gagal INSERT ke tabel siam_siswa"
 					errorMessage := fmt.Sprintf("Error running %q: %+v", query, err1)
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessageReturn, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessageReturn, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -248,7 +253,7 @@ func Siswa(c *gin.Context) {
 				}
 
 				if ErrorMessage != "" {
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "3", "3", ErrorMessage, ErrorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "3", "3", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -257,14 +262,14 @@ func Siswa(c *gin.Context) {
 				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_siswa WHERE nisn = '%s'", NISN)
 				if err := db.QueryRow(query).Scan(&CntNISN); err != nil {
 					errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
 				if CntNISN == 0 {
 					ErrorMessage := "NISN tidak ditemukan"
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -273,14 +278,14 @@ func Siswa(c *gin.Context) {
 				query2 := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_siswa WHERE nama_siswa = '%s'", Nama)
 				if err := db.QueryRow(query2).Scan(&CntNama); err != nil {
 					errorMessage := fmt.Sprintf("Error running %q: %+v", query2, err)
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
 				if CntNama > 0 {
 					ErrorMessage := fmt.Sprintf("%s already exist", Nama)
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", ErrorMessage, ErrorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", ErrorMessage, ErrorMessage, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, ErrorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -314,7 +319,7 @@ func Siswa(c *gin.Context) {
 				if err1 != nil {
 					errorMessageReturn := "Gagal UPDATE ke tabel siam_siswa"
 					errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err1)
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessageReturn, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessageReturn, logData, c)
 					helper.SendLogError(jSiswaRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -383,7 +388,7 @@ func Siswa(c *gin.Context) {
 				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_siswa %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -394,7 +399,7 @@ func Siswa(c *gin.Context) {
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -415,18 +420,18 @@ func Siswa(c *gin.Context) {
 
 					if err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
-						returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				}
 
-				returnDataJsonSiswa(jSiswaResponses, totalPage, "0", "0", "", "", logData, c)
+				returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "0", "0", "", "", logData, c)
 				return
 
 			} else {
 				errorMessage := "Method not found"
-				returnDataJsonSiswa(jSiswaResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+				returnDataJsonSiswa(jSiswaResponses, totalPage, Read, Write, "1", "1", errorMessage, errorMessage, logData, c)
 				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -434,7 +439,7 @@ func Siswa(c *gin.Context) {
 	}
 }
 
-func returnDataJsonSiswa(jSiswaResponse []JSiswaResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
+func returnDataJsonSiswa(jSiswaResponse []JSiswaResponse, TotalPage float64, Read string, Write string, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
 	if strings.Contains(ErrorMessage, "Error running") {
 		ErrorMessage = "Error Execute data"
 	}
@@ -451,6 +456,8 @@ func returnDataJsonSiswa(jSiswaResponse []JSiswaResponse, TotalPage float64, Err
 			"DateTime":   currentTime1,
 			"Result":     jSiswaResponse,
 			"TotalPage":  TotalPage,
+			"Read":  Read,
+			"Wrtie":  Write,
 		})
 	}
 
