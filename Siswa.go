@@ -54,7 +54,7 @@ func Siswa(c *gin.Context) {
 	StartTime := time.Now()
 	StartTimeStr := StartTime.String()
 	PageGo := "SISWA"
-	PageMenu := "Siswa"
+	PageMenu := "Student"
 
 	var (
 		bodyBytes    []byte

@@ -25,6 +25,7 @@ func main() {
 	router.POST(apiVersion+"Siswa", Siswa)
 	router.POST(apiVersion+"Roles", Roles)
 	router.POST(apiVersion+"MenuSidebar", MenuSidebar)
+	router.POST(apiVersion+"SubMenu", SubMenu)
 	router.POST(apiVersion+"UserLogin", UserLogin)
 	router.POST(apiVersion+"ListRole", ListRole)
 
