@@ -126,432 +126,439 @@ func JadwalEkskul(c *gin.Context) {
 		return
 	}
 
-	// if helper.ValidateHeader(bodyString, c) {
-	if err := c.ShouldBindJSON(&jadwalEkskulRequest); err != nil {
-		errorMessage := "Error, Bind Json Data"
-		returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-		helper.SendLogError(jadwalEkskulRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-		return
-	} else {
-		page := 0
-		rowPage := 0
-
-		id := jadwalEkskulRequest.Id
-		namaEkskul := jadwalEkskulRequest.NamaEkskul
-		tahunAjaran := jadwalEkskulRequest.TahunAjaran
-		semester := jadwalEkskulRequest.Semester
-		hari := jadwalEkskulRequest.Hari
-		jam := jadwalEkskulRequest.Jam
-		namaPengajar := jadwalEkskulRequest.NamaPengajar
-		tempat := jadwalEkskulRequest.Tempat
-		status := jadwalEkskulRequest.Status
-
-		usernameSession := jadwalEkskulRequest.Username
-		paramKeySession := jadwalEkskulRequest.ParamKey
-		method := jadwalEkskulRequest.Method
-		page = jadwalEkskulRequest.Page
-		rowPage = jadwalEkskulRequest.RowPage
-		order := jadwalEkskulRequest.Order
-		orderBy := jadwalEkskulRequest.OrderBy
-
-		// ------ start check session paramkey ------
-		checkAccessVal := helper.CheckSession(usernameSession, paramKeySession, c)
-		if checkAccessVal != "1" {
-			checkAccessValErrorMsg := checkAccessVal
-			checkAccessValErrorMsgReturn := "Session Expired"
-			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
-			helper.SendLogError(usernameSession, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, method, Path, IP, c)
-			return
-		}
-
-		if method == "INSERT" {
-			if namaEkskul == "" {
-				errorMessage := "Nama Ekskul Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if tahunAjaran == "" {
-				errorMessage := "Tahun Ajaran Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if semester == 0 {
-				errorMessage := "Semester Tidak Boleh Kosong / harus > 0"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if hari == "" {
-				errorMessage := "Hari Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if jam == "" {
-				errorMessage := "Jam Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if namaPengajar == "" {
-				errorMessage := "Nama Pengajar Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			if tempat == "" {
-				errorMessage := "Tempat Tidak Boleh Kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			iStatus := 1
-			if status != "" {
-				iStatus, err = strconv.Atoi(status)
-				if err != nil {
-					errorMessage := "Error convert variable, " + err.Error()
-					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-					return
-				}
-			}
-
-			msgValidate := validateJadwalEkskul(tahunAjaran, semester, hari, tempat, jam, db)
-			if msgValidate != "OK" {
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-				helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			msgValidate = validateNamaPengajar(tahunAjaran, semester, hari, namaPengajar, jam, db)
-			if msgValidate != "OK" {
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-				helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			query := fmt.Sprintf("insert into siam_jadwal_ekskul(nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status) values('%s', '%s', %d, '%s', '%s', '%s', '%s', %d)",
-				namaEkskul, tahunAjaran, semester, hari, jam, namaPengajar, tempat, iStatus)
-			if _, err = db.Exec(query); err != nil {
-				errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			jadwalEkskulResponse.NamaEkskul = namaEkskul
-			jadwalEkskulResponse.TahunAjaran = tahunAjaran
-			jadwalEkskulResponse.Semester = semester
-			jadwalEkskulResponse.Hari = hari
-			jadwalEkskulResponse.Jam = jam
-			jadwalEkskulResponse.NamaPengajar = namaPengajar
-			jadwalEkskulResponse.Tempat = tempat
-			jadwalEkskulResponse.Status = iStatus
-			jadwalEkskulResponse.TanggalInput = StartTimeStr
-
-			jadwalEkskulResponses := append(jadwalEkskulResponses, jadwalEkskulResponse)
-
-			errorMessage := "Sukses insert data!"
+	if helper.ValidateHeader(bodyString, c) {
+		if err := c.ShouldBindJSON(&jadwalEkskulRequest); err != nil {
+			errorMessage := "Error, Bind Json Data"
 			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+			helper.SendLogError(jadwalEkskulRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+			return
+		} else {
+			page := 0
+			rowPage := 0
 
-		} else if method == "UPDATE" {
-			if id == 0 {
-				errorMessage := "Id kelas tidak boleh kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+			id := jadwalEkskulRequest.Id
+			namaEkskul := strings.ToUpper(jadwalEkskulRequest.NamaEkskul)
+			tahunAjaran := jadwalEkskulRequest.TahunAjaran
+			semester := jadwalEkskulRequest.Semester
+			hari := strings.ToUpper(jadwalEkskulRequest.Hari)
+			jam := jadwalEkskulRequest.Jam
+			namaPengajar := strings.ToUpper(jadwalEkskulRequest.NamaPengajar)
+			tempat := strings.ToUpper(jadwalEkskulRequest.Tempat)
+			status := jadwalEkskulRequest.Status
+
+			usernameSession := jadwalEkskulRequest.Username
+			paramKeySession := jadwalEkskulRequest.ParamKey
+			method := jadwalEkskulRequest.Method
+			page = jadwalEkskulRequest.Page
+			rowPage = jadwalEkskulRequest.RowPage
+			order := jadwalEkskulRequest.Order
+			orderBy := jadwalEkskulRequest.OrderBy
+
+			// ------ start check session paramkey ------
+			checkAccessVal := helper.CheckSession(usernameSession, paramKeySession, c)
+			if checkAccessVal != "1" {
+				checkAccessValErrorMsg := checkAccessVal
+				checkAccessValErrorMsgReturn := "Session Expired"
+				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
+				helper.SendLogError(usernameSession, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, method, Path, IP, c)
 				return
 			}
 
-			msgValidate := validateIdJadwalEkskul(id, db)
-			if msgValidate != "OK" {
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-				helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			querySet := ""
-			if namaEkskul != "" {
-				querySet += " nama_ekskul = '" + namaEkskul + "'"
-			}
-
-			if tahunAjaran != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" tahun_ajaran = '%s' ", tahunAjaran)
-			}
-
-			if semester > 0 {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" semester = %d ", semester)
-			}
-
-			if hari != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" hari = '%s' ", hari)
-			}
-
-			if jam != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" jam = '%s' ", jam)
-			}
-
-			if namaPengajar != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" nama_pengajar = '%s' ", namaPengajar)
-			}
-
-			if tempat != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				querySet += fmt.Sprintf(" tempat = '%s' ", tempat)
-			}
-
-			if status != "" {
-				if querySet != "" {
-					querySet += " , "
-				}
-				iStatus, err := strconv.Atoi(status)
-				if err == nil {
-					querySet += fmt.Sprintf(" status = %d ", iStatus)
-				} else {
-					errorMessage := "Error convert variable, " + err.Error()
+			if method == "INSERT" {
+				if namaEkskul == "" {
+					errorMessage := "Nama Ekskul Tidak Boleh Kosong!"
 					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
-			}
-
-			query1 := fmt.Sprintf(`update siam_jadwal_ekskul set %s where id = %d ;`, querySet, id)
-			rows, err := db.Query(query1)
-			defer rows.Close()
-			if err != nil {
-				errorMessage := "Error query, " + err.Error()
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			query1 = fmt.Sprintf(`select id, nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status, tgl_input from siam_jadwal_ekskul where id = %d`, id)
-			rows, err = db.Query(query1)
-			defer rows.Close()
-			if err != nil {
-				errorMessage := "Error query, " + err.Error()
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			for rows.Next() {
-				err = rows.Scan(
-					&jadwalEkskulResponse.Id,
-					&jadwalEkskulResponse.NamaEkskul,
-					&jadwalEkskulResponse.TahunAjaran,
-					&jadwalEkskulResponse.Semester,
-					&jadwalEkskulResponse.Hari,
-					&jadwalEkskulResponse.Jam,
-					&jadwalEkskulResponse.NamaPengajar,
-					&jadwalEkskulResponse.Tempat,
-					&jadwalEkskulResponse.Status,
-					&jadwalEkskulResponse.TanggalInput,
-				)
-			}
-
-			jadwalEkskulResponses = append(jadwalEkskulResponses, jadwalEkskulResponse)
-
-			errorMessage := "Sukses update data!"
-			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
-
-		} else if method == "DELETE" {
-			if id == 0 {
-				errorMessage := "Id kelas tidak boleh kosong!"
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			msgValidate := validateIdJadwalEkskul(id, db)
-			if msgValidate != "OK" {
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-				helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			query1 := fmt.Sprintf(`update siam_jadwal_ekskul set status = 0 where id = %d ;`, id)
-			rows, err := db.Query(query1)
-			defer rows.Close()
-			if err != nil {
-				errorMessage := "Error query, " + err.Error()
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-
-			errorMessage := "Berhasil hapus data!"
-			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
-
-		} else if method == "SELECT" {
-			PageNow := (page - 1) * rowPage
-
-			queryWhere := ""
-			if namaEkskul != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += " nama_ekskul LIKE '%" + namaEkskul + "%' "
-			}
-
-			if tahunAjaran != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += fmt.Sprintf(" tahun_ajaran = '%s' ", tahunAjaran)
-			}
-
-			if semester > 0 {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += fmt.Sprintf(" semester = %d ", semester)
-			}
-
-			if hari != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += fmt.Sprintf(" hari = '%s' ", hari)
-			}
-
-			if jam != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += fmt.Sprintf(" jam = '%s' ", jam)
-			}
-
-			if namaPengajar != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += " nama_pengajar LIKE '%" + namaPengajar + "%' "
-			}
-
-			if tempat != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-
-				queryWhere += " tempat LIKE '%" + tempat + "%' "
-			}
-
-			if status != "" {
-				if queryWhere != "" {
-					queryWhere += " AND "
-				}
-				iStatus, err := strconv.Atoi(status)
-				if err == nil {
-					queryWhere += fmt.Sprintf(" status = %d ", iStatus)
-				} else {
-					errorMessage := "Error convert variable, " + err.Error()
+				if tahunAjaran == "" {
+					errorMessage := "Tahun Ajaran Tidak Boleh Kosong!"
 					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
-			}
 
-			if queryWhere != "" {
-				queryWhere = " WHERE " + queryWhere
-			}
+				if semester == 0 {
+					errorMessage := "Semester Tidak Boleh Kosong / harus > 0"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
 
-			queryOrder := ""
+				if hari == "" {
+					errorMessage := "Hari Tidak Boleh Kosong!"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
 
-			if orderBy != "" {
-				queryOrder = " ORDER BY " + orderBy + " " + order
-			}
+				if jam == "" {
+					errorMessage := "Jam Tidak Boleh Kosong!"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
 
-			totalRecords = 0
-			totalPage = 0
+				if namaPengajar == "" {
+					errorMessage := "Nama Pengajar Tidak Boleh Kosong!"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
 
-			query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_jadwal_ekskul %s ;", queryWhere)
-			if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
-				errorMessage := "Error query, " + err.Error()
+				if tempat == "" {
+					errorMessage := "Tempat Tidak Boleh Kosong!"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				iStatus := 1
+				if status != "" {
+					iStatus, err = strconv.Atoi(status)
+					if err != nil {
+						errorMessage := "Error convert variable, " + err.Error()
+						returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
+				}
+
+				msgValidate := validateJadwalEkskul(tahunAjaran, semester, hari, tempat, jam, db)
+				if msgValidate != "OK" {
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				msgValidate = validateNamaPengajar(tahunAjaran, semester, hari, namaPengajar, jam, db)
+				if msgValidate != "OK" {
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				query := fmt.Sprintf("insert into siam_jadwal_ekskul(nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status) values('%s', '%s', %d, '%s', '%s', '%s', '%s', %d)",
+					namaEkskul, tahunAjaran, semester, hari, jam, namaPengajar, tempat, iStatus)
+				if _, err = db.Exec(query); err != nil {
+					errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				jadwalEkskulResponse.NamaEkskul = namaEkskul
+				jadwalEkskulResponse.TahunAjaran = tahunAjaran
+				jadwalEkskulResponse.Semester = semester
+				jadwalEkskulResponse.Hari = hari
+				jadwalEkskulResponse.Jam = jam
+				jadwalEkskulResponse.NamaPengajar = namaPengajar
+				jadwalEkskulResponse.Tempat = tempat
+				jadwalEkskulResponse.Status = iStatus
+				jadwalEkskulResponse.TanggalInput = StartTimeStr
+
+				jadwalEkskulResponses := append(jadwalEkskulResponses, jadwalEkskulResponse)
+
+				errorMessage := "Sukses insert data!"
 				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
-			totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 
-			query1 := fmt.Sprintf(`select id, nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status, tgl_input from siam_jadwal_ekskul %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, rowPage)
-			rows, err := db.Query(query1)
-			defer rows.Close()
-			if err != nil {
-				errorMessage := "Error query, " + err.Error()
-				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-				return
-			}
+			} else if method == "UPDATE" {
+				if id == 0 {
+					errorMessage := "Id kelas tidak boleh kosong!"
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
 
-			for rows.Next() {
-				err = rows.Scan(
-					&jadwalEkskulResponse.Id,
-					&jadwalEkskulResponse.NamaEkskul,
-					&jadwalEkskulResponse.TahunAjaran,
-					&jadwalEkskulResponse.Semester,
-					&jadwalEkskulResponse.Hari,
-					&jadwalEkskulResponse.Jam,
-					&jadwalEkskulResponse.NamaPengajar,
-					&jadwalEkskulResponse.Tempat,
-					&jadwalEkskulResponse.Status,
-					&jadwalEkskulResponse.TanggalInput,
-				)
+				msgValidate := validateIdJadwalEkskul(id, db)
+				if msgValidate != "OK" {
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				querySet := ""
+				if namaEkskul != "" {
+					querySet += " nama_ekskul = '" + namaEkskul + "'"
+				}
+
+				if tahunAjaran != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" tahun_ajaran = '%s' ", tahunAjaran)
+				}
+
+				if semester > 0 {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" semester = %d ", semester)
+				}
+
+				if hari != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" hari = '%s' ", hari)
+				}
+
+				if jam != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" jam = '%s' ", jam)
+				}
+
+				if namaPengajar != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" nama_pengajar = '%s' ", namaPengajar)
+				}
+
+				if tempat != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					querySet += fmt.Sprintf(" tempat = '%s' ", tempat)
+				}
+
+				if status != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+					iStatus, err := strconv.Atoi(status)
+					if err == nil {
+						querySet += fmt.Sprintf(" status = %d ", iStatus)
+					} else {
+						errorMessage := "Error convert variable, " + err.Error()
+						returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
+
+				}
+
+				msgValidate = validateUpdateJadwalEkskul(id, namaEkskul, namaPengajar, tahunAjaran, semester, tempat, hari, jam, db)
+				if msgValidate != "OK" {
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				query1 := fmt.Sprintf(`update siam_jadwal_ekskul set %s where id = %d ;`, querySet, id)
+				rows, err := db.Query(query1)
+				defer rows.Close()
+				if err != nil {
+					errorMessage := "Error query, " + err.Error()
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				query1 = fmt.Sprintf(`select id, nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status, tgl_input from siam_jadwal_ekskul where id = %d`, id)
+				rows, err = db.Query(query1)
+				defer rows.Close()
+				if err != nil {
+					errorMessage := "Error query, " + err.Error()
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				for rows.Next() {
+					err = rows.Scan(
+						&jadwalEkskulResponse.Id,
+						&jadwalEkskulResponse.NamaEkskul,
+						&jadwalEkskulResponse.TahunAjaran,
+						&jadwalEkskulResponse.Semester,
+						&jadwalEkskulResponse.Hari,
+						&jadwalEkskulResponse.Jam,
+						&jadwalEkskulResponse.NamaPengajar,
+						&jadwalEkskulResponse.Tempat,
+						&jadwalEkskulResponse.Status,
+						&jadwalEkskulResponse.TanggalInput,
+					)
+				}
 
 				jadwalEkskulResponses = append(jadwalEkskulResponses, jadwalEkskulResponse)
 
-				if err != nil {
-					errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
+				errorMessage := "Sukses update data!"
+				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+
+			} else if method == "DELETE" {
+				if id == 0 {
+					errorMessage := "Id kelas tidak boleh kosong!"
 					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
+
+				msgValidate := validateIdJadwalEkskul(id, db)
+				if msgValidate != "OK" {
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				query1 := fmt.Sprintf(`update siam_jadwal_ekskul set status = 0 where id = %d ;`, id)
+				rows, err := db.Query(query1)
+				defer rows.Close()
+				if err != nil {
+					errorMessage := "Error query, " + err.Error()
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				errorMessage := "Berhasil hapus data!"
+				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+
+			} else if method == "SELECT" {
+				PageNow := (page - 1) * rowPage
+
+				queryWhere := ""
+				if namaEkskul != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += " nama_ekskul LIKE '%" + namaEkskul + "%' "
+				}
+
+				if tahunAjaran != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += fmt.Sprintf(" tahun_ajaran = '%s' ", tahunAjaran)
+				}
+
+				if semester > 0 {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += fmt.Sprintf(" semester = %d ", semester)
+				}
+
+				if hari != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += fmt.Sprintf(" hari = '%s' ", hari)
+				}
+
+				if jam != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += fmt.Sprintf(" jam = '%s' ", jam)
+				}
+
+				if namaPengajar != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += " nama_pengajar LIKE '%" + namaPengajar + "%' "
+				}
+
+				if tempat != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+
+					queryWhere += " tempat LIKE '%" + tempat + "%' "
+				}
+
+				if status != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+					iStatus, err := strconv.Atoi(status)
+					if err == nil {
+						queryWhere += fmt.Sprintf(" status = %d ", iStatus)
+					} else {
+						errorMessage := "Error convert variable, " + err.Error()
+						returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
+				}
+
+				if queryWhere != "" {
+					queryWhere = " WHERE " + queryWhere
+				}
+
+				queryOrder := ""
+
+				if orderBy != "" {
+					queryOrder = " ORDER BY " + orderBy + " " + order
+				}
+
+				totalRecords = 0
+				totalPage = 0
+
+				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_jadwal_ekskul %s ;", queryWhere)
+				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
+					errorMessage := "Error query, " + err.Error()
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+				totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
+
+				query1 := fmt.Sprintf(`select id, nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat, status, tgl_input from siam_jadwal_ekskul %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, rowPage)
+				rows, err := db.Query(query1)
+				defer rows.Close()
+				if err != nil {
+					errorMessage := "Error query, " + err.Error()
+					returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				for rows.Next() {
+					err = rows.Scan(
+						&jadwalEkskulResponse.Id,
+						&jadwalEkskulResponse.NamaEkskul,
+						&jadwalEkskulResponse.TahunAjaran,
+						&jadwalEkskulResponse.Semester,
+						&jadwalEkskulResponse.Hari,
+						&jadwalEkskulResponse.Jam,
+						&jadwalEkskulResponse.NamaPengajar,
+						&jadwalEkskulResponse.Tempat,
+						&jadwalEkskulResponse.Status,
+						&jadwalEkskulResponse.TanggalInput,
+					)
+
+					jadwalEkskulResponses = append(jadwalEkskulResponses, jadwalEkskulResponse)
+
+					if err != nil {
+						errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
+						returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+						return
+					}
+				}
+
+				errorMessage := "OK"
+				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+
+			} else {
+				errorMessage := "Method not found"
+				returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
+				return
 			}
 
-			errorMessage := "OK"
-			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
-
-		} else {
-			errorMessage := "Method not found"
-			returnJsonJadwalEkskul(jadwalEkskulResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-			helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
-			return
 		}
-
 	}
-	// }
 
 }
 
@@ -639,6 +646,165 @@ func validateNamaPengajar(tahunAjaran string, semester int, hari string, jam str
 	if msg == "OK" {
 		if cntJadwalEkskul > 0 {
 			msg = "Pengajar Sudah Ada di Ekskul Lain Dengan Jadwal Yang Sama!"
+		}
+	}
+
+	return msg
+}
+
+func validateUpdateJadwalEkskul(id int, namaEkskul string, namaPengajar string, tahunAjaran string, semester int, tempat string, hari string, jam string, db *sql.DB) string {
+	msg := "OK"
+	vNamaEkskul := ""
+	vNamaPengajar := ""
+	vTahunAjaran := ""
+	vSemester := 0
+	vTempat := ""
+	vHari := ""
+	vJam := ""
+
+	query1 := fmt.Sprintf(`select nama_ekskul, tahun_ajaran, semester, hari, jam, nama_pengajar, tempat from siam_jadwal_ekskul where id = %d`, id)
+	rows, err := db.Query(query1)
+	defer rows.Close()
+	if err != nil {
+		msg = "Error query, " + err.Error()
+	}
+
+	for rows.Next() {
+		err = rows.Scan(
+			&vNamaEkskul,
+			&vTahunAjaran,
+			&vSemester,
+			&vHari,
+			&vJam,
+			&vNamaPengajar,
+			&vTempat,
+		)
+	}
+
+	fmt.Println(vNamaEkskul,
+		vNamaPengajar,
+		vTahunAjaran,
+		vSemester,
+		vTempat,
+		vHari,
+		vJam)
+
+	if msg == "OK" {
+		queryWhere := ""
+		if namaEkskul == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" nama_ekskul = '%s' ", vNamaEkskul)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" nama_ekskul = '%s' ", namaEkskul)
+		}
+
+		if tahunAjaran == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" tahun_ajaran = '%s' ", vTahunAjaran)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" tahun_ajaran = '%s' ", tahunAjaran)
+		}
+
+		if semester > 0 {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" semester = %d ", semester)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" semester = %d ", vSemester)
+		}
+
+		if hari == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" hari = '%s' ", vHari)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" hari = '%s' ", hari)
+		}
+
+		if jam == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" jam = '%s' ", vJam)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" jam = '%s' ", jam)
+		}
+
+		if namaPengajar == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" nama_pengajar = '%s' ", vNamaPengajar)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" nama_pengajar = '%s' ", namaPengajar)
+		}
+
+		if tempat == "" {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" tempat = '%s' ", vTempat)
+		} else {
+			if queryWhere != "" {
+				queryWhere += " AND "
+			}
+
+			queryWhere += fmt.Sprintf(" tempat = '%s' ", tempat)
+		}
+
+		if queryWhere != "" {
+			queryWhere = " WHERE " + queryWhere
+		}
+
+		cntJadwalEkskul := 0
+		query1 = fmt.Sprintf(`select count(1) as cnt from siam_jadwal_ekskul %s ;`, queryWhere)
+		if err := db.QueryRow(query1).Scan(&cntJadwalEkskul); err != nil {
+			msg = "Error query, " + err.Error()
+		}
+
+		fmt.Println(query1)
+
+		if msg == "OK" {
+			if cntJadwalEkskul > 0 {
+				msg = "Sudah ada data yang sama!"
+			}
 		}
 	}
 
