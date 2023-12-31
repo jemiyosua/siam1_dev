@@ -132,8 +132,8 @@ func Kelas(c *gin.Context) {
 			statusKelas := jKelasRequest.StatusKelas
 			page = jKelasRequest.Page
 			rowPage = jKelasRequest.RowPage
-			// Order := jKelasRequest.Order
-			// OrderBy := jKelasRequest.OrderBy
+			order := jKelasRequest.Order
+			orderBy := jKelasRequest.OrderBy
 
 			// ------ start check session paramkey ------
 			checkAccessVal := helper.CheckSession(usernameSession, paramKeySession, c)
@@ -152,23 +152,14 @@ func Kelas(c *gin.Context) {
 					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
 					return
 				} else {
-					kelasExists := 0
-					query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_kelas WHERE status_kelas = 1 and nama_kelas = '%s'", namaKelas)
-					if err := db.QueryRow(query).Scan(&kelasExists); err != nil {
-						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					msgValidate := validateNamaKelas(namaKelas, db)
+					if msgValidate != "OK" {
+						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+						helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
 						return
-					} else {
-						if kelasExists > 0 {
-							errorMessage := "Sudah ada nama kelas yang sama!"
-							returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-							helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
-							return
-						}
 					}
 
-					query = fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s',1)", namaKelas)
+					query := fmt.Sprintf("INSERT into siam_kelas(nama_kelas,status_kelas)values('%s',1)", namaKelas)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
 						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
@@ -189,6 +180,13 @@ func Kelas(c *gin.Context) {
 				querySet := ""
 				if namaKelas != "" {
 					querySet += " nama_kelas = '" + namaKelas + "'"
+
+					msgValidate := validateNamaKelas(namaKelas, db)
+					if msgValidate != "OK" {
+						returnDataJsonKelas(jKelasResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
+						helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
+						return
+					}
 				}
 
 				if idKelas == 0 {
@@ -299,6 +297,12 @@ func Kelas(c *gin.Context) {
 					queryWhere = " WHERE " + queryWhere
 				}
 
+				queryOrder := ""
+
+				if orderBy != "" {
+					queryOrder = " ORDER BY " + orderBy + " " + order
+				}
+
 				totalRecords = 0
 				totalPage = 0
 				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_kelas %s", queryWhere)
@@ -310,7 +314,7 @@ func Kelas(c *gin.Context) {
 				}
 				totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 
-				query1 := fmt.Sprintf(`SELECT id_kelas, nama_kelas, status_kelas, tgl_input FROM siam_kelas %s LIMIT %d,%d;`, queryWhere, PageNow, rowPage)
+				query1 := fmt.Sprintf(`SELECT id_kelas, nama_kelas, status_kelas, tgl_input FROM siam_kelas %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, rowPage)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -401,6 +405,23 @@ func validateIdKelas(id int, db *sql.DB) string {
 	if msg == "OK" {
 		if cntKelas == 0 {
 			msg = "Data tidak ditemukan!"
+		}
+	}
+
+	return msg
+}
+
+func validateNamaKelas(namaKelas string, db *sql.DB) string {
+	msg := "OK"
+	cntKelas := 0
+	query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_kelas WHERE status_kelas = 1 and nama_kelas = '%s'", namaKelas)
+	if err := db.QueryRow(query).Scan(&cntKelas); err != nil {
+		msg = fmt.Sprintf("Error running %q: %+v", query, err)
+	}
+
+	if msg == "OK" {
+		if cntKelas > 0 {
+			msg = "Sudah ada nama kelas yang sama!"
 		}
 	}
 

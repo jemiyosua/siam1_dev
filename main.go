@@ -27,7 +27,9 @@ func main() {
 	router.POST(apiVersion+"MenuSidebar", MenuSidebar)
 	router.POST(apiVersion+"SubMenu", SubMenu)
 	router.POST(apiVersion+"UserLogin", UserLogin)
-	router.POST(apiVersion+"ListRole", ListRole)
+	router.POST(apiVersion+"KelasActive", KelasActive)
+	router.POST(apiVersion+"JadwalEkskul", JadwalEkskul)
+  router.POST(apiVersion+"ListRole", ListRole)
 
 	PORT := os.Getenv("PORT")
 
