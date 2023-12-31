@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/md5"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -31,7 +30,6 @@ type JUserLoginRequest struct {
 	Status          string
 	ParamKey        string
 	Method          string
-	CountBlock      string
 	Page            int
 	RowPage         int
 	OrderBy         string
@@ -41,10 +39,9 @@ type JUserLoginRequest struct {
 type JUserLoginResponse struct {
 	Id           int
 	Username     string
-	Password     string
 	Nama         string
 	Role         string
-	Status       int
+	Status       string
 	TanggalInput string
 }
 
@@ -110,7 +107,7 @@ func UserLogin(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage := "Error, Body is empty"
-		returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jUserLoginRequest.UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -118,7 +115,7 @@ func UserLogin(c *gin.Context) {
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage := "Error, Body - invalid json data"
-		returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jUserLoginRequest.UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -126,182 +123,148 @@ func UserLogin(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&jUserLoginRequest); err != nil {
 			errorMessage := "Error, Bind Json Data"
-			returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
+			returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
 			helper.SendLogError(jUserLoginRequest.UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
-			page := 0
-			rowPage := 0
+			Page := 0
+			RowPage := 0
 
-			usernameMaster := jUserLoginRequest.UsernameMaster
-			usernameSession := jUserLoginRequest.UsernameSession
-			method := jUserLoginRequest.Method
-			id := jUserLoginRequest.Id
-			password := jUserLoginRequest.Password
-			nama := jUserLoginRequest.Nama
-			role := jUserLoginRequest.Role
-			status := jUserLoginRequest.Status
-			countBlock := jUserLoginRequest.CountBlock
-			paramKeySession := jUserLoginRequest.ParamKey
-			page = jUserLoginRequest.Page
-			rowPage = jUserLoginRequest.RowPage
-			order := jUserLoginRequest.Order
-			orderBy := jUserLoginRequest.OrderBy
+			UsernameMaster := jUserLoginRequest.UsernameMaster
+			UsernameSession := jUserLoginRequest.UsernameSession
+			Method := jUserLoginRequest.Method
+			Id := jUserLoginRequest.Id
+			Password := jUserLoginRequest.Password
+			Nama := jUserLoginRequest.Nama
+			Role := jUserLoginRequest.Role
+			Status := jUserLoginRequest.Status
+			ParamKeySession := jUserLoginRequest.ParamKey
+			Page = jUserLoginRequest.Page
+			RowPage = jUserLoginRequest.RowPage
+			Order := jUserLoginRequest.Order
+			OrderBy := jUserLoginRequest.OrderBy
 
 			// ------ start check session paramkey ------
-			checkAccessVal := helper.CheckSession(usernameSession, paramKeySession, c)
+			checkAccessVal := helper.CheckSession(UsernameSession, ParamKeySession, c)
 			if checkAccessVal != "1" {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
-				helper.SendLogError(usernameSession, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, method, Path, IP, c)
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
+				helper.SendLogError(UsernameSession, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
 				return
 			}
 
-			if method == "INSERT" {
+			if Method == "INSERT" {
 				errorMessage := "OK"
 
-				if usernameMaster == "" {
+				if UsernameMaster == "" {
 					errorMessage = "Username tidak boleh kosong!"
-				} else if password == "" {
+				} else if Password == "" {
 					errorMessage = "Password tidak boleh kosong!"
-				} else if nama == "" {
+				} else if Nama == "" {
 					errorMessage = "Nama tidak boleh kosong!"
-				} else if role == "" {
+				} else if Role == "" {
 					errorMessage = "Role tidak boleh kosong!"
 				}
 
 				if errorMessage == "OK" {
-					Password := encodeText(password)
+					Password := encodeText(Password)
 
 					userExist := 0
-					query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_login WHERE status = 1 and username = '%s'", usernameMaster)
+					query := fmt.Sprintf("SELECT ifnull(count(1),0)cnt FROM siam_login WHERE status = 1 and username = '%s'", UsernameMaster)
 					if err := db.QueryRow(query).Scan(&userExist); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					} else {
 						if userExist > 0 {
-							returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-							helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+							returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+							helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 							return
 						}
 					}
 
-					query = fmt.Sprintf("INSERT into siam_login(username,password,nama, role, status)values('%s','%s','%s','%s',1)", usernameMaster, Password, nama, role)
+					query = fmt.Sprintf("INSERT into siam_login(username,password,nama, role, status)values('%s','%s','%s','%s',1)", UsernameMaster, Password, Nama, Role)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 
 					currentTime := time.Now()
 					currentTimeStr := currentTime.Format("01/02/2006 15:04:05")
 
-					jUserLoginResponse.Username = usernameMaster
-					jUserLoginResponse.Password = Password
-					jUserLoginResponse.Nama = nama
-					jUserLoginResponse.Role = role
-					jUserLoginResponse.Status = 1
+					jUserLoginResponse.Username = UsernameMaster
+					jUserLoginResponse.Nama = Nama
+					jUserLoginResponse.Role = Role
+					jUserLoginResponse.Status = "1"
 					jUserLoginResponse.TanggalInput = currentTimeStr
 
-					jUserLoginResponses = append(jUserLoginResponses, jUserLoginResponse)
-
-					errorMessage := "Sukses insert data!"
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+					errorMessage := "Sukses tambah user baru!"
+					returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
 
 				} else {
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
-			} else if method == "UPDATE" {
-				if id == 0 {
-					errorMessage := "Id tidak boleh kosong!"
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
-					return
-				}
-
-				msgValidate := validateIdUserlogin(id, db)
-				if msgValidate != "OK" {
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-					helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
-					return
-				}
-
+			} else if Method == "UPDATE" {
 				querySet := ""
-				if password != "" {
-					Password := encodeText(password)
+				if Password != "" {
+					Password := encodeText(Password)
 					querySet += " password = '" + Password + "'"
 				}
 
-				if nama != "" {
+				if Nama != "" {
 					if querySet != "" {
 						querySet += " , "
 					}
-					querySet += " nama = '" + nama + "'"
+					querySet += " nama = '" + Nama + "'"
 				}
 
-				if role != "" {
+				if Role != "" {
 					if querySet != "" {
 						querySet += " , "
 					}
-					querySet += " role = '" + role + "'"
+					querySet += " role = '" + Role + "'"
 				}
 
-				if status != "" {
+				if Status != "" {
 					if querySet != "" {
 						querySet += " , "
 					}
 
-					iStatus, err := strconv.Atoi(status)
+					iStatus, err := strconv.Atoi(Status)
 					if err == nil {
 						querySet += fmt.Sprintf(" status = %d ", iStatus)
 					} else {
 						errorMessage := "Error convert variable, " + err.Error()
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				}
 
-				if countBlock != "" {
-					if querySet != "" {
-						querySet += " , "
-					}
-
-					iCountBlock, err := strconv.Atoi(countBlock)
-					if err == nil {
-						querySet += fmt.Sprintf(" count_block = %d ", iCountBlock)
-					} else {
-						errorMessage := "Error convert variable, " + err.Error()
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
-						return
-					}
-				}
-
-				query1 := fmt.Sprintf(`update siam_login set %s where id = %d ;`, querySet, id)
+				query1 := fmt.Sprintf(`UPDATE siam_login SET %s WHERE id = %d ;`, querySet, Id)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
-				query1 = fmt.Sprintf(`select id, username, password, nama, role, status, tgl_input from siam_login sl where id = %d`, id)
+				query1 = fmt.Sprintf(`select id, username, password, nama, role, status, tgl_input from siam_login sl where id = %d`, Id)
 				rows, err = db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
@@ -309,7 +272,6 @@ func UserLogin(c *gin.Context) {
 					err = rows.Scan(
 						&jUserLoginResponse.Id,
 						&jUserLoginResponse.Username,
-						&jUserLoginResponse.Password,
 						&jUserLoginResponse.Nama,
 						&jUserLoginResponse.Role,
 						&jUserLoginResponse.Status,
@@ -317,92 +279,81 @@ func UserLogin(c *gin.Context) {
 					)
 				}
 
-				jUserLoginResponses = append(jUserLoginResponses, jUserLoginResponse)
+				errorMessage := "Sukses update user login!"
+				returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
 
-				errorMessage := "Sukses update data!"
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+			} else if Method == "DELETE" {
 
-			} else if method == "DELETE" {
-
-				if id > 0 {
-
-					msgValidate := validateIdUserlogin(id, db)
-
-					if msgValidate != "OK" {
-						query1 := fmt.Sprintf(`update siam_login set status = 0 where id = %d ;`, id)
-						rows, err := db.Query(query1)
-						defer rows.Close()
-						if err != nil {
-							errorMessage := "Error query, " + err.Error()
-							returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-							helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
-							return
-						}
-					} else {
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", msgValidate, msgValidate, logData, c)
-						helper.SendLogError(usernameSession, PageGo, msgValidate, "", "", "1", AllHeader, method, Path, IP, c)
+				if Id > 0 {
+					query1 := fmt.Sprintf(`update siam_login set status = 0 where id = %d ;`, Id)
+					rows, err := db.Query(query1)
+					defer rows.Close()
+					if err != nil {
+						errorMessage := "Error query, " + err.Error()
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
-
 				} else {
-					errorMessage := "Id tidak boleh kosong!"
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					errorMessage := "Id tidak ditemukan!"
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
-				errorMessage := "Sukses delete data!"
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+				errorMessage := "Sukses delete user!"
+				returnSuccessUserLogin(c, jUserLoginResponse, errorMessage, totalPage, "0")
 
-			} else if method == "SELECT" {
+			} else if Method == "SELECT" {
 
-				PageNow := (page - 1) * rowPage
+				PageNow := (Page - 1) * RowPage
 
+				// ---------- start query where ----------
 				queryWhere := ""
-				if id > 0 {
+				if Id > 0 {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += fmt.Sprintf(" id = %d ", id)
+					queryWhere += fmt.Sprintf(" id = %d ", Id)
 				}
 
-				if usernameMaster != "" {
+				if UsernameMaster != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += " username LIKE '%" + usernameMaster + "%' "
+					queryWhere += " username LIKE '%" + UsernameMaster + "%' "
 				}
 
-				if nama != "" {
+				if Nama != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += " nama LIKE '%" + nama + "%' "
+					queryWhere += " nama LIKE '%" + Nama + "%' "
 				}
 
-				if role != "" {
+				if Role != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += " role LIKE '%" + role + "%' "
+					queryWhere += " role LIKE '%" + Role + "%' "
 				}
 
-				if status != "" {
+				if Status != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					iStatus, err := strconv.Atoi(status)
+					iStatus, err := strconv.Atoi(Status)
 					if err == nil {
 						queryWhere += fmt.Sprintf(" status = %d ", iStatus)
 					} else {
 						errorMessage := "Error convert variable, " + err.Error()
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				}
@@ -413,8 +364,8 @@ func UserLogin(c *gin.Context) {
 
 				queryOrder := ""
 
-				if orderBy != "" {
-					queryOrder = " ORDER BY " + orderBy + " " + order
+				if OrderBy != "" {
+					queryOrder = " ORDER BY " + OrderBy + " " + Order
 				}
 
 				totalRecords = 0
@@ -423,19 +374,19 @@ func UserLogin(c *gin.Context) {
 				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_login %s ;", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
-				totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
+				totalPage = math.Ceil(float64(totalRecords) / float64(RowPage))
 
-				query1 := fmt.Sprintf(`select id, username ,nama ,role ,status, tgl_input from siam_login sl %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, rowPage)
+				query1 := fmt.Sprintf(`select id, username ,nama ,role ,status, tgl_input from siam_login sl %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, RowPage)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-					helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+					returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
 
@@ -453,20 +404,19 @@ func UserLogin(c *gin.Context) {
 
 					if err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
-						returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-						helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+						returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				}
 
-				errorMessage := "OK"
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "0", "0", errorMessage, errorMessage, logData, c)
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "0", "0", "", "", logData, c)
 				return
 
 			} else {
 				errorMessage := "Method not found"
-				returnDataJsonUserLogin(jUserLoginResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
-				helper.SendLogError(usernameSession, PageGo, errorMessage, "", "", "1", AllHeader, method, Path, IP, c)
+				returnDataJsonUserLogin(jUserLoginResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+				helper.SendLogError(UsernameSession, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
 
@@ -481,7 +431,19 @@ func encodeText(text string) string {
 	return SignatureKey
 }
 
-func returnDataJsonUserLogin(jUserLoginResponse []JUserLoginResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
+func returnSuccessUserLogin(c *gin.Context, jUserLoginResponse JUserLoginResponse, Message string, TotalPage float64, ErrorCode string) {
+	currentTime := time.Now()
+	currentTime1 := currentTime.Format("01/02/2006 15:04:05")
+	c.PureJSON(http.StatusOK, gin.H{
+		"ErrCode":   ErrorCode,
+		"Message":   Message,
+		"DateTime":  currentTime1,
+		"Result":    jUserLoginResponse,
+		"TotalPage": TotalPage,
+	})
+}
+
+func returnDataJsonUserLogin(jUserLoginResponse []JUserLoginResponse, TotalPage float64, TotalData float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
 	if strings.Contains(ErrorMessage, "Error running") {
 		ErrorMessage = "Error Execute data"
 	}
@@ -498,6 +460,7 @@ func returnDataJsonUserLogin(jUserLoginResponse []JUserLoginResponse, TotalPage 
 			"DateTime":   currentTime1,
 			"Result":     jUserLoginResponse,
 			"TotalPage":  TotalPage,
+			"TotalData":  TotalData,
 		})
 	}
 
@@ -515,22 +478,4 @@ func returnDataJsonUserLogin(jUserLoginResponse []JUserLoginResponse, TotalPage 
 	runtime.GC()
 
 	return
-}
-
-func validateIdUserlogin(id int, db *sql.DB) string {
-	msg := "OK"
-
-	var cntUser int
-	query1 := fmt.Sprintf(`select count(1) as cnt from siam_login where id = %d ;`, id)
-	if err := db.QueryRow(query1).Scan(&cntUser); err != nil {
-		msg = "Error query, " + err.Error()
-	}
-
-	if msg == "OK" {
-		if cntUser == 0 {
-			msg = "Data tidak ditemukan!"
-		}
-	}
-
-	return msg
 }
