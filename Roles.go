@@ -22,7 +22,7 @@ type JRolesRequest struct {
 	Username string
 	ParamKey string
 	Method   string
-	RoleID   int
+	RoleID   string
 	RoleName string
 	Status   string
 	Page     int
@@ -81,6 +81,7 @@ func Roles(c *gin.Context) {
 	DateNow := StartTime.Format("2006-01-02")
 	LogFILE := LogFile + "Login_" + DateNow + ".log"
 	file, err := os.OpenFile(LogFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	fmt.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,7 +103,7 @@ func Roles(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage := "Error, Body is empty"
-		returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jRolesRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -110,7 +111,7 @@ func Roles(c *gin.Context) {
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage := "Error, Body - invalid json data"
-		returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+		returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 		helper.SendLogError(jRolesRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 		return
 	}
@@ -120,7 +121,7 @@ func Roles(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&jRolesRequest); err != nil {
 			errorMessage := "Error, Bind Json Data"
-			returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+			returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 			helper.SendLogError(jRolesRequest.Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 			return
 		} else {
@@ -145,7 +146,7 @@ func Roles(c *gin.Context) {
 			if checkAccessVal != "1" {
 				checkAccessValErrorMsg := checkAccessVal
 				checkAccessValErrorMsgReturn := "Session Expired"
-				returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
+				returnDataJsonRoles(jRolesResponses, totalPage, "2", "2", checkAccessValErrorMsgReturn, checkAccessValErrorMsgReturn, logData, c)
 				helper.SendLogError(jRolesRequest.Username, PageGo, checkAccessValErrorMsg, "", "", "2", AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -161,7 +162,14 @@ func Roles(c *gin.Context) {
 					queryWhere += " upper(nama_role)  = upper('" + RoleName + "') "
 				} else {
 					errorMessage := "Role Name can not be empty!"
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
+					helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
+					return
+				}
+
+				if Status == "" {
+					errorMessage := "Status can not be empty!"
+					returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -176,43 +184,36 @@ func Roles(c *gin.Context) {
 
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				} else {
 					if totalRecords > 0 {
 						errorMessage := "Role " + RoleName + " is already existed"
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+						returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 						return
 					} else {
-						Status = "1"
-						queryInsert := fmt.Sprintf("INSERT INTO siam_role ( nama_role, status, tgl_input) values ('%s','%s',sysdate())", RoleName, Status)
+						queryInsert := fmt.Sprintf("INSERT INTO siam_role ( nama_role, status, tgl_input) values (upper('%s'),'1',sysdate())", RoleName)
 						if _, err := db.Exec(queryInsert); err != nil {
 							errorMessage := "Error insert, " + err.Error()
-							returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+							returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 							helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 							return
+						} else {
+							successMessage := "Success to insert data Role!"
+							returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", successMessage, successMessage, logData, c)
+							return
 						}
-						// else {
-						// 	successMessage := "Success to insert data Role!"
-						// 	returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", successMessage, successMessage, logData, c)
-						// 	return
-						// }
-
-						// update 11/12/2023 - J
-						successMessage := "Success to insert data Role!"
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "0", "0", successMessage, successMessage, logData, c)
-						return
 					}
 				}
 
 			} else if Method == "UPDATE" {
 				querySet := ""
 				// --------------- Query Where --------------
-				if RoleID == 0 {
+				if RoleID == "" {
 					errorMessage := "Role ID can not be empty!"
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -233,7 +234,7 @@ func Roles(c *gin.Context) {
 						querySet += " , "
 					}
 
-					querySet += " status  = '" + Status + "' "
+					querySet += " status  = '" + RoleName + "' "
 				}
 
 				if querySet != "" {
@@ -243,91 +244,89 @@ func Roles(c *gin.Context) {
 				// -------- end of query for update ---------
 				totalRecords = 0
 				totalRecordsRoles = 0
-				queryCekID := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_role WHERE id = %d", RoleID)
+				queryCekID := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_role WHERE id = '%s'", RoleID)
+
 				if err := db.QueryRow(queryCekID).Scan(&totalRecordsID); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				} else {
 					if totalRecordsID == 0 {
 						errorMessage := "Role ID Not Found!"
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+						returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 						return
 					} else {
 						totalRecordsRoles = 0
 						queryCekRoles := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_role WHERE upper(nama_role) = upper('%s')", RoleName)
+
 						if err := db.QueryRow(queryCekRoles).Scan(&totalRecordsRoles); err != nil {
 							errorMessage := "Error query, " + err.Error()
-							returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+							returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 							helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 							return
 						} else {
 
 							if totalRecordsRoles > 0 {
 								errorMessage := "Role " + RoleName + " is already existed"
-								returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+								returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 								helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 								return
 							} else {
 
-								queryUpdate := fmt.Sprintf("UPDATE siam_role %s WHERE id = %d ", querySet, RoleID)
+								queryUpdate := fmt.Sprintf("UPDATE siam_role  %s WHERE id = '%s' ", querySet, RoleID)
 								if _, err := db.Exec(queryUpdate); err != nil {
 									errorMessage := "Error update, " + err.Error()
-									returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+									returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 									helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 									return
+								} else {
+									successMessage := "Success to update data Role!"
+									returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", successMessage, successMessage, logData, c)
+									return
 								}
-								// else {
-								// 	successMessage := "Success to update data Role!"
-								// 	returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", successMessage, successMessage, logData, c)
-								// 	return
-								// }
 
-								successMessage := "Success to update data Role!"
-								returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "0", "0", successMessage, successMessage, logData, c)
-								return
 							}
 						}
 					}
 				}
 
 			} else if Method == "DELETE" {
-				if RoleID == 0 {
+				if RoleID == "" {
 					errorMessage := "Role ID can not be null!"
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 					return
 				}
 				// ---------- end of query where ----------
 
 				totalRecords = 0
-				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_role WHERE id = %d", RoleID)
+				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_role WHERE id = '%s'", RoleID)
 
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				} else {
 					if totalRecords == 1 {
 
-						queryInsert := fmt.Sprintf("DELETE FROM siam_role WHERE id = %d", RoleID)
+						queryInsert := fmt.Sprintf("DELETE FROM siam_role WHERE id = '%s'", RoleID)
 						if _, err := db.Exec(queryInsert); err != nil {
 							errorMessage := "Error insert, " + err.Error()
-							returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+							returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 							helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 							return
 						} else {
 							successMessage := "Success to delete data Role!"
-							returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "0", "0", successMessage, successMessage, logData, c)
+							returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", successMessage, successMessage, logData, c)
 							return
 						}
 
 					} else if totalRecords == 0 {
 						errorMessage := "No Data Found To Delete"
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "3", "3", errorMessage, errorMessage, logData, c)
+						returnDataJsonRoles(jRolesResponses, totalPage, "3", "3", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 						return
 					}
@@ -339,14 +338,6 @@ func Roles(c *gin.Context) {
 
 				// ---------- start query where ----------
 				queryWhere := ""
-				if RoleID != 0 {
-					if queryWhere != "" {
-						queryWhere += " AND "
-					}
-
-					queryWhere += fmt.Sprintf(" id = %d ", RoleID)
-				}
-
 				if RoleName != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
@@ -375,7 +366,7 @@ func Roles(c *gin.Context) {
 				} else {
 					if Order == "" {
 						errorMessage := "Order tidak boleh kosong"
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					} else {
@@ -389,7 +380,7 @@ func Roles(c *gin.Context) {
 
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -400,7 +391,7 @@ func Roles(c *gin.Context) {
 				defer rows.Close()
 				if err != nil {
 					errorMessage := "Error query, " + err.Error()
-					returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+					returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 					helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 					return
 				}
@@ -416,18 +407,18 @@ func Roles(c *gin.Context) {
 
 					if err != nil {
 						errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err)
-						returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+						returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 						return
 					}
 				}
 
-				returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "0", "0", "", "", logData, c)
+				returnDataJsonRoles(jRolesResponses, totalPage, "0", "0", "", "", logData, c)
 				return
 
 			} else {
 				errorMessage := "Method not found"
-				returnDataJsonRoles(jRolesResponses, totalPage, totalRecords, "1", "1", errorMessage, errorMessage, logData, c)
+				returnDataJsonRoles(jRolesResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
 				helper.SendLogError(Username, PageGo, errorMessage, "", "", "1", AllHeader, Method, Path, IP, c)
 				return
 			}
@@ -435,7 +426,7 @@ func Roles(c *gin.Context) {
 	}
 }
 
-func returnDataJsonRoles(jRolesResponse []JRolesResponse, TotalPage float64, TotalData float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
+func returnDataJsonRoles(jRolesResponse []JRolesResponse, TotalPage float64, ErrorCode string, ErrorCodeReturn string, ErrorMessage string, ErrorMessageReturn string, logData string, c *gin.Context) {
 	if strings.Contains(ErrorMessage, "Error running") {
 		ErrorMessage = "Error Execute data"
 	}
@@ -452,7 +443,6 @@ func returnDataJsonRoles(jRolesResponse []JRolesResponse, TotalPage float64, Tot
 			"DateTime":   currentTime1,
 			"Result":     jRolesResponse,
 			"TotalPage":  TotalPage,
-			"TotalData":  TotalData,
 		})
 	}
 

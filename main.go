@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	db                                                       *sql.DB
+	db               *sql.DB
 	connectionString string
 )
 
@@ -30,6 +30,9 @@ func main() {
 	router.POST(apiVersion+"KelasActive", KelasActive)
 	router.POST(apiVersion+"JadwalEkskul", JadwalEkskul)
 	router.POST(apiVersion+"ListRole", ListRole)
+	router.POST(apiVersion+"Roles", Roles)
+	router.POST(apiVersion+"Subjects", Subjects)
+	router.POST(apiVersion+"Majors", Majors)
 
 	PORT := os.Getenv("PORT")
 
