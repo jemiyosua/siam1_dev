@@ -19,21 +19,23 @@ import (
 )
 
 type JSubjectsRequest struct {
-	Username    string
-	ParamKey    string
-	Method      string
-	SubjectID   string
-	SubjectName string
-	Status      string
-	Page        int
-	RowPage     int
-	OrderBy     string
-	Order       string
+	Username     string
+	ParamKey     string
+	Method       string
+	SubjectID    string
+	SubjectName  string
+	SubjectClass string
+	Status       string
+	Page         int
+	RowPage      int
+	OrderBy      string
+	Order        string
 }
 
 type JSubjectsResponse struct {
 	SubjectID    int
 	SubjectName  string
+	SubjectClass string
 	Status       string
 	TanggalInput string
 }
@@ -134,6 +136,7 @@ func Subjects(c *gin.Context) {
 			Username := jSubjectsRequest.Username
 			SubjectID := jSubjectsRequest.SubjectID
 			SubjectName := strings.TrimSpace(jSubjectsRequest.SubjectName)
+			SubjectClass := jSubjectsRequest.SubjectClass
 			Method := jSubjectsRequest.Method
 			Status := jSubjectsRequest.Status
 			Page = jSubjectsRequest.Page
@@ -194,7 +197,7 @@ func Subjects(c *gin.Context) {
 						helper.SendLogError(Username, PageGo, errorMessage, "", "", "3", AllHeader, Method, Path, IP, c)
 						return
 					} else {
-						queryInsert := fmt.Sprintf("INSERT INTO siam_mata_pelajaran ( nama_mapel, status_mapel, tgl_input) values (upper('%s'),'1',sysdate())", SubjectName)
+						queryInsert := fmt.Sprintf("INSERT INTO siam_mata_pelajaran ( nama_mapel, kelas, status_mapel, tgl_input) values (upper('%s'), %s,'1',sysdate())", SubjectName, SubjectClass)
 						if _, err := db.Exec(queryInsert); err != nil {
 							errorMessage := "Error insert, " + err.Error()
 							returnDataJsonSubjects(jSubjectsResponses, totalPage, "1", "1", errorMessage, errorMessage, logData, c)
@@ -237,6 +240,14 @@ func Subjects(c *gin.Context) {
 					querySet += " status_mapel  = '" + SubjectName + "' "
 				}
 
+				if SubjectClass != "" {
+					if querySet != "" {
+						querySet += " , "
+					}
+
+					querySet += " kelas  = '" + SubjectClass + "' "
+				}
+
 				if querySet != "" {
 					querySet = " SET " + querySet
 				}
@@ -259,7 +270,7 @@ func Subjects(c *gin.Context) {
 						return
 					} else {
 						totalRecordsSubject = 0
-						queryCekSubjects := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_mata_pelajaran WHERE upper(nama_mapel) = upper('%s')", SubjectName)
+						queryCekSubjects := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM siam_mata_pelajaran WHERE upper(nama_mapel) = upper('%s') and id_mapel <> '%s'", SubjectName, SubjectID)
 
 						if err := db.QueryRow(queryCekSubjects).Scan(&totalRecordsSubject); err != nil {
 							errorMessage := "Error query, " + err.Error()
@@ -386,7 +397,7 @@ func Subjects(c *gin.Context) {
 				}
 				totalPage = math.Ceil(float64(totalRecords) / float64(RowPage))
 
-				query1 := fmt.Sprintf(`SELECT id_mapel, nama_mapel, status_mapel, tgl_input FROM siam_mata_pelajaran %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, RowPage)
+				query1 := fmt.Sprintf(`SELECT id_mapel, nama_mapel, kelas,status_mapel, tgl_input FROM siam_mata_pelajaran %s %s LIMIT %d,%d;`, queryWhere, queryOrder, PageNow, RowPage)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -399,6 +410,7 @@ func Subjects(c *gin.Context) {
 					err = rows.Scan(
 						&jSubjectsResponse.SubjectID,
 						&jSubjectsResponse.SubjectName,
+						&jSubjectsResponse.SubjectClass,
 						&jSubjectsResponse.Status,
 						&jSubjectsResponse.TanggalInput,
 					)
@@ -438,8 +450,8 @@ func returnDataJsonSubjects(jSubjectsResponse []JSubjectsResponse, TotalPage flo
 		currentTime1 := currentTime.Format("01/02/2006 15:04:05")
 
 		c.PureJSON(http.StatusOK, gin.H{
-			"ErrCode":    ErrorCodeReturn,
-			"ErrMessage": ErrorMessageReturn,
+			"ErrCode":    ErrorCode,
+			"ErrMessage": ErrorMessage,
 			"DateTime":   currentTime1,
 			"Result":     jSubjectsResponse,
 			"TotalPage":  TotalPage,
